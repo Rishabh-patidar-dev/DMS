@@ -1,0 +1,8 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(portal)/inventory/page": "app/(portal)/inventory/page.js",
+  "/(portal)/orders/page": "app/(portal)/orders/page.js",
+  "/(portal)/page": "app/(portal)/page.js",
+  "/(portal)/service/page": "app/(portal)/service/page.js",
+  "/(portal)/warranty/page": "app/(portal)/warranty/page.js"
+}

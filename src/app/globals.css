@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Same token names/values as the Ev Landing dealer-onboarding app on
+   purpose — one dealer moves between the two (onboarding dashboard ->
+   operational portal) and the visual language should read as one product,
+   not a handoff to something different. */
+:root {
+  --ink: #0F1B3D;
+  --slate: #0B7A78;
+  --stone: #009D9A;
+  --sand: #64748B;
+  --ink2: #0A1330;
+  --white: #F7FAFC;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-slate: var(--slate);
+  --color-stone: var(--stone);
+  --color-sand: var(--sand);
+  --color-ink2: var(--ink2);
+  --color-brand-white: var(--white);
+  --color-background: var(--ink2);
+  --color-foreground: var(--white);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display), var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--slate); }
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 2s linear infinite; }
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal { animation: reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: none !important; }
+}

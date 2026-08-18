@@ -1,0 +1,66 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight } from 'lucide-react'
+import { crmFetch } from '@/lib/crm/dealerAuth'
+import { PageHeader, StatTile } from '@/components/portal/StatTile'
+import type { Overview } from '@/components/portal/PortalShell'
+
+export default function OverviewPage() {
+  const [overview, setOverview] = useState<Overview | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    crmFetch('/api/v1/dealer-portal/overview').then(({ data }) => {
+      setOverview(data)
+      setLoading(false)
+    })
+  }, [])
+
+  const quickLinks = [
+    { href: '/inventory', label: 'View allocated stock', icon: Car },
+    { href: '/orders', label: 'Place an order', icon: ClipboardList },
+    { href: '/warranty', label: 'Raise a warranty claim', icon: ShieldCheck },
+    { href: '/service', label: 'Log a service ticket', icon: Wrench },
+  ]
+
+  return (
+    <div className="mx-auto max-w-5xl px-6 py-10">
+      <PageHeader
+        title={`Welcome back${overview ? `, ${overview.dealer.legalName}` : ''}`}
+        subtitle="Everything you place here reaches the manufacturer instantly — orders, stock, and claims are the same records their team sees."
+      />
+
+      {loading ? (
+        <div className="py-10 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-ink/40" /></div>
+      ) : overview ? (
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <StatTile icon={Car} label="Allocated units" value={overview.vehicleCount} />
+          <StatTile icon={ClipboardList} label="Open vehicle orders" value={overview.openTransfers} />
+          <StatTile icon={ClipboardList} label="Open part orders" value={overview.openSpareParts} />
+          <StatTile icon={Wrench} label="Open service tickets" value={overview.openTickets} />
+          <StatTile icon={ShieldCheck} label="Open warranty claims" value={overview.openClaims} />
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {quickLinks.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex items-center justify-between rounded-xl border border-ink/[0.08] bg-white px-5 py-4 transition-colors hover:border-slate/40"
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone/15 text-slate">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium text-ink">{label}</span>
+            </span>
+            <ArrowRight className="h-4 w-4 text-ink/30 transition-transform group-hover:translate-x-0.5 group-hover:text-slate" />
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
