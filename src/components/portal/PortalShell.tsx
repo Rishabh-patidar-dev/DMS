@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Zap, LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users,
+  Zap, LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users, WifiOff,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 
@@ -31,11 +31,19 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [overview, setOverview] = useState<Overview | null>(null)
-  const [state, setState] = useState<'loading' | 'ready' | 'locked'>('loading')
+  const [state, setState] = useState<'loading' | 'ready' | 'locked' | 'unreachable'>('loading')
   const [signingOut, setSigningOut] = useState(false)
 
   const load = useCallback(async () => {
     const { ok, status, data } = await crmFetch('/api/v1/dealer-portal/overview')
+    if (status === 0) {
+      // crmFetch() couldn't reach the API at all — wrong API URL, CORS
+      // rejection, or the API is down. Distinct from "locked" (a real
+      // response saying access isn't unlocked yet) so the message tells the
+      // dealer/admin what's actually wrong.
+      setState('unreachable')
+      return
+    }
     if (status === 401) {
       router.push('/login')
       return
@@ -60,6 +68,27 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-white">
         <Loader2 className="h-5 w-5 animate-spin text-ink/40" />
+      </div>
+    )
+  }
+
+  if (state === 'unreachable') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-brand-white p-8">
+        <div className="max-w-md rounded-2xl border border-ink/[0.08] bg-white p-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+            <WifiOff className="h-5 w-5 text-red-500" />
+          </div>
+          <h1 className="text-lg font-semibold text-ink">Can&rsquo;t reach the server</h1>
+          <p className="mt-2 text-sm text-ink/60">
+            This usually means the CRM API URL is misconfigured for this deployment, or the API
+            isn&rsquo;t allowing requests from this site yet. Try reloading — if it keeps happening,
+            this needs an admin to check the environment configuration.
+          </p>
+          <button onClick={() => window.location.reload()} className="mt-5 text-sm font-medium text-slate hover:underline">
+            Reload
+          </button>
+        </div>
       </div>
     )
   }
