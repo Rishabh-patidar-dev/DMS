@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight } from 'lucide-react'
+import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight, Users } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import type { Overview } from '@/components/portal/PortalShell'
@@ -19,6 +19,7 @@ export default function OverviewPage() {
   }, [])
 
   const quickLinks = [
+    { href: '/leads', label: 'Follow up on leads', icon: Users },
     { href: '/inventory', label: 'View allocated stock', icon: Car },
     { href: '/orders', label: 'Place an order', icon: ClipboardList },
     { href: '/warranty', label: 'Raise a warranty claim', icon: ShieldCheck },
@@ -35,7 +36,8 @@ export default function OverviewPage() {
       {loading ? (
         <div className="py-10 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-ink/40" /></div>
       ) : overview ? (
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatTile icon={Users} label="Open leads" value={overview.openLeads} />
           <StatTile icon={Car} label="Allocated units" value={overview.vehicleCount} />
           <StatTile icon={ClipboardList} label="Open vehicle orders" value={overview.openTransfers} />
           <StatTile icon={ClipboardList} label="Open part orders" value={overview.openSpareParts} />

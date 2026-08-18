@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Zap, LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock,
+  Zap, LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 
@@ -15,10 +15,12 @@ type Overview = {
   openSpareParts: number
   openTickets: number
   openClaims: number
+  openLeads: number
 }
 
 const NAV = [
   { href: '/', label: 'Overview', icon: LayoutGrid },
+  { href: '/leads', label: 'Leads', icon: Users },
   { href: '/inventory', label: 'My Inventory', icon: Car },
   { href: '/orders', label: 'Orders', icon: ClipboardList },
   { href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },

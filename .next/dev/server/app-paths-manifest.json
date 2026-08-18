@@ -1,8 +1,6 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
-  "/(portal)/inventory/page": "app/(portal)/inventory/page.js",
-  "/(portal)/orders/page": "app/(portal)/orders/page.js",
-  "/(portal)/page": "app/(portal)/page.js",
-  "/(portal)/service/page": "app/(portal)/service/page.js",
-  "/(portal)/warranty/page": "app/(portal)/warranty/page.js"
+  "/(portal)/leads/[id]/page": "app/(portal)/leads/[id]/page.js",
+  "/(portal)/leads/page": "app/(portal)/leads/page.js",
+  "/(portal)/page": "app/(portal)/page.js"
 }

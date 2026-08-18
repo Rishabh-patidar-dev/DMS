@@ -1,16 +1,20 @@
 @import "tailwindcss";
 
-/* Same token names/values as the Ev Landing dealer-onboarding app on
-   purpose — one dealer moves between the two (onboarding dashboard ->
-   operational portal) and the visual language should read as one product,
-   not a handoff to something different. */
+/* DMS-specific palette — deep forest green scale, sober/professional
+   register distinct from the Ev Landing indigo+teal look (this is the
+   dealer's own operational tool, not the marketing/onboarding site).
+   Page canvas sits on the lightest tint (--white); cards render literal
+   white on top of it, so the mint cast reads as a quiet backdrop, not a
+   dominant color. Token NAMES kept identical to Ev Landing's on purpose —
+   every component already reads color through these four variables. */
 :root {
-  --ink: #0F1B3D;
-  --slate: #0B7A78;
-  --stone: #009D9A;
-  --sand: #64748B;
-  --ink2: #0A1330;
-  --white: #F7FAFC;
+  --ink: #051F20;    /* darkest — headings, primary text */
+  --slate: #235347;  /* mid-dark green — links, icon glyphs, secondary accent text (AA+ on both white text and the light canvas) */
+  --stone: #8EB69B;  /* light sage — primary buttons/badges/large accents (dark ink text reads clearly on it) */
+  --sand: #163832;   /* muted secondary text/borders, used mostly at reduced opacity */
+  --ink2: #0B2B26;   /* deepest surface */
+  --white: #F5FAF7;  /* page canvas — a near-white, barely-tinted sage; the full mint (#DAF1DE) reads too saturated across a whole viewport, so it's used selectively instead (badge chips, login split-panel) */
+  --mint: #DAF1DE;   /* the lightest palette swatch, used as an accent tint, not the base canvas */
 }
 
 @theme inline {
@@ -20,6 +24,7 @@
   --color-sand: var(--sand);
   --color-ink2: var(--ink2);
   --color-brand-white: var(--white);
+  --color-mint: var(--mint);
   --color-background: var(--ink2);
   --color-foreground: var(--white);
   --font-sans: var(--font-inter);
