@@ -15,6 +15,16 @@
   --ink2: #0B2B26;   /* deepest surface */
   --white: #F5FAF7;  /* page canvas — a near-white, barely-tinted sage; the full mint (#DAF1DE) reads too saturated across a whole viewport, so it's used selectively instead (badge chips, login split-panel) */
   --mint: #DAF1DE;   /* the lightest palette swatch, used as an accent tint, not the base canvas */
+
+  /* Categorical chart palette — greens from the brand scale plus a few
+     coordinating hues for series that need to read as distinct categories,
+     not a gradient (dataviz convention: never reuse one hue as identity). */
+  --viz-1: #235347;
+  --viz-2: #8EB69B;
+  --viz-3: #2a6fdb;
+  --viz-4: #b9790a;
+  --viz-5: #6d4aed;
+  --viz-6: #c23b30;
 }
 
 @theme inline {

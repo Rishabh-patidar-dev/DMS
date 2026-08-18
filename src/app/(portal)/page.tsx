@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight, Users } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
+import ChartCard from '@/components/charts/ChartCard'
+import DonutChart from '@/components/charts/DonutChart'
+import BarChart from '@/components/charts/BarChart'
 import type { Overview } from '@/components/portal/PortalShell'
 
 export default function OverviewPage() {
@@ -27,7 +30,7 @@ export default function OverviewPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <PageHeader
         title={`Welcome back${overview ? `, ${overview.dealer.legalName}` : ''}`}
         subtitle="Everything you place here reaches the manufacturer instantly — orders, stock, and claims are the same records their team sees."
@@ -36,14 +39,47 @@ export default function OverviewPage() {
       {loading ? (
         <div className="py-10 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-ink/40" /></div>
       ) : overview ? (
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <StatTile icon={Users} label="Open leads" value={overview.openLeads} />
-          <StatTile icon={Car} label="Allocated units" value={overview.vehicleCount} />
-          <StatTile icon={ClipboardList} label="Open vehicle orders" value={overview.openTransfers} />
-          <StatTile icon={ClipboardList} label="Open part orders" value={overview.openSpareParts} />
-          <StatTile icon={Wrench} label="Open service tickets" value={overview.openTickets} />
-          <StatTile icon={ShieldCheck} label="Open warranty claims" value={overview.openClaims} />
-        </div>
+        <>
+          <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <StatTile icon={Users} label="Open leads" value={overview.openLeads} />
+            <StatTile icon={Car} label="Allocated units" value={overview.vehicleCount} />
+            <StatTile icon={ClipboardList} label="Open vehicle orders" value={overview.openTransfers} />
+            <StatTile icon={ClipboardList} label="Open part orders" value={overview.openSpareParts} />
+            <StatTile icon={Wrench} label="Open service tickets" value={overview.openTickets} />
+            <StatTile icon={ShieldCheck} label="Open warranty claims" value={overview.openClaims} />
+          </div>
+
+          <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ChartCard title="My stock, by status" subtitle="Vehicle units currently allocated to you">
+              {overview.vehiclesByStatus.some((d) => d.value > 0) ? (
+                <DonutChart data={overview.vehiclesByStatus} centerLabel="units" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No stock allocated yet.</p>
+              )}
+            </ChartCard>
+            <ChartCard title="Leads, by follow-up status" subtitle="Everything routed to you, plus your own walk-ins">
+              {overview.leadsByStatus.some((d) => d.value > 0) ? (
+                <DonutChart data={overview.leadsByStatus} centerLabel="leads" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No leads yet.</p>
+              )}
+            </ChartCard>
+            <ChartCard title="My orders, by status" subtitle="Vehicle + spare-part orders combined">
+              {overview.ordersByStatus.length > 0 ? (
+                <BarChart data={overview.ordersByStatus} />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No orders placed yet.</p>
+              )}
+            </ChartCard>
+            <ChartCard title="Warranty claims, by status" subtitle="Auto-adjudicated on submission">
+              {overview.claimsByStatus.length > 0 ? (
+                <BarChart data={overview.claimsByStatus} color="var(--viz-3)" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No claims raised yet.</p>
+              )}
+            </ChartCard>
+          </div>
+        </>
       ) : null}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

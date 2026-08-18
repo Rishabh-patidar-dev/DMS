@@ -5,8 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Zap, LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users, WifiOff,
+  Target, Mail, MessageCircle,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
+
+type ChartSeries = { label: string; value: number }[]
 
 type Overview = {
   dealer: { id: number; dealerCode: string; legalName: string; status: string }
@@ -16,11 +19,18 @@ type Overview = {
   openTickets: number
   openClaims: number
   openLeads: number
+  vehiclesByStatus: ChartSeries
+  leadsByStatus: ChartSeries
+  ordersByStatus: ChartSeries
+  claimsByStatus: ChartSeries
 }
 
 const NAV = [
   { href: '/', label: 'Overview', icon: LayoutGrid },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/segments', label: 'Segments', icon: Target },
+  { href: '/campaigns/email', label: 'Email Campaigns', icon: Mail },
+  { href: '/campaigns/whatsapp', label: 'WhatsApp Campaigns', icon: MessageCircle },
   { href: '/inventory', label: 'My Inventory', icon: Car },
   { href: '/orders', label: 'Orders', icon: ClipboardList },
   { href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },

@@ -40,6 +40,14 @@ export function StatusBadge({ status }: { status: string }) {
     IN_REPAIR: 'bg-blue-100 text-blue-700',
     REIMBURSED: 'bg-emerald-100 text-emerald-700',
     RECOVERY: 'bg-amber-100 text-amber-700',
+    DRAFT: 'bg-ink/10 text-ink/50',
+    SCHEDULED: 'bg-amber-100 text-amber-700',
+    SENT: 'bg-emerald-100 text-emerald-700',
+    CONTACTED: 'bg-blue-100 text-blue-700',
+    CONVERTED: 'bg-emerald-100 text-emerald-700',
+    LOST: 'bg-red-100 text-red-600',
+    ACCEPTED: 'bg-blue-100 text-blue-700',
+    ASSIGNED: 'bg-sand/15 text-sand',
   }
   return (
     <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${styles[status] ?? 'bg-ink/10 text-ink/50'}`}>

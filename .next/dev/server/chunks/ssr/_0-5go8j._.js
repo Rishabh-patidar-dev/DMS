@@ -940,14 +940,22 @@ function StatusBadge({ status }) {
         INFO_REQUESTED: 'bg-amber-100 text-amber-700',
         IN_REPAIR: 'bg-blue-100 text-blue-700',
         REIMBURSED: 'bg-emerald-100 text-emerald-700',
-        RECOVERY: 'bg-amber-100 text-amber-700'
+        RECOVERY: 'bg-amber-100 text-amber-700',
+        DRAFT: 'bg-ink/10 text-ink/50',
+        SCHEDULED: 'bg-amber-100 text-amber-700',
+        SENT: 'bg-emerald-100 text-emerald-700',
+        CONTACTED: 'bg-blue-100 text-blue-700',
+        CONVERTED: 'bg-emerald-100 text-emerald-700',
+        LOST: 'bg-red-100 text-red-600',
+        ACCEPTED: 'bg-blue-100 text-blue-700',
+        ASSIGNED: 'bg-sand/15 text-sand'
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
         className: `inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${styles[status] ?? 'bg-ink/10 text-ink/50'}`,
         children: status.replace(/_/g, ' ')
     }, void 0, false, {
         fileName: "[project]/src/components/portal/StatTile.tsx",
-        lineNumber: 45,
+        lineNumber: 53,
         columnNumber: 5
     }, this);
 }
