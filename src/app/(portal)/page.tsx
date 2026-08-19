@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight, Users } from 'lucide-react'
+import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight, Users, TrendingUp } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import ChartCard from '@/components/charts/ChartCard'
@@ -49,6 +49,26 @@ export default function OverviewPage() {
             <StatTile icon={ShieldCheck} label="Open warranty claims" value={overview.openClaims} />
           </div>
 
+          <div className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-ink">
+            <TrendingUp className="h-4 w-4 text-slate" /> Sales
+          </div>
+          <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ChartCard title="Units sold, last 8 weeks" subtitle="Vehicles delivered to your customers" className="lg:col-span-2">
+              {overview.salesTrend.some((d) => d.value > 0) ? (
+                <BarChart data={overview.salesTrend} color="var(--viz-1)" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No sales recorded yet.</p>
+              )}
+            </ChartCard>
+            <ChartCard title="Top-selling models" subtitle="All-time, this dealership">
+              {overview.topModelsSold.length > 0 ? (
+                <BarChart data={overview.topModelsSold} color="var(--viz-2)" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No sales recorded yet.</p>
+              )}
+            </ChartCard>
+          </div>
+
           <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ChartCard title="My stock, by status" subtitle="Vehicle units currently allocated to you">
               {overview.vehiclesByStatus.some((d) => d.value > 0) ? (
@@ -76,6 +96,13 @@ export default function OverviewPage() {
                 <BarChart data={overview.claimsByStatus} color="var(--viz-3)" />
               ) : (
                 <p className="py-6 text-center text-xs text-ink/40">No claims raised yet.</p>
+              )}
+            </ChartCard>
+            <ChartCard title="Invoices, by type" subtitle="Order confirmations, out-of-stock and partial-fulfillment notices">
+              {overview.invoicesByType.some((d) => d.value > 0) ? (
+                <DonutChart data={overview.invoicesByType} centerLabel="invoices" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No invoices issued yet.</p>
               )}
             </ChartCard>
           </div>

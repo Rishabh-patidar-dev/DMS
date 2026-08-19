@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users, WifiOff,
-  Target, Mail, MessageCircle, FileText,
+  Target, Mail, MessageCircle, FileText, ChevronDown,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 
@@ -23,19 +23,37 @@ type Overview = {
   leadsByStatus: ChartSeries
   ordersByStatus: ChartSeries
   claimsByStatus: ChartSeries
+  salesTrend: ChartSeries
+  topModelsSold: ChartSeries
+  invoicesByType: ChartSeries
 }
 
-const NAV = [
-  { href: '/', label: 'Overview', icon: LayoutGrid },
-  { href: '/leads', label: 'Leads', icon: Users },
-  { href: '/segments', label: 'Segments', icon: Target },
-  { href: '/campaigns/email', label: 'Email Campaigns', icon: Mail },
-  { href: '/campaigns/whatsapp', label: 'WhatsApp Campaigns', icon: MessageCircle },
-  { href: '/inventory', label: 'My Inventory', icon: Car },
-  { href: '/orders', label: 'Orders', icon: ClipboardList },
-  { href: '/invoices', label: 'Invoices', icon: FileText },
-  { href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },
-  { href: '/service', label: 'Service Tickets', icon: Wrench },
+type NavIcon = React.ComponentType<{ className?: string }>
+type NavItem = { href: string; label: string; icon: NavIcon }
+type NavEntry = ({ kind: 'link' } & NavItem) | { kind: 'group'; id: string; group: string; items: NavItem[] }
+
+// Segments / Email / WhatsApp campaigns are sub-modules of Leads, not
+// standalone modules — grouped exactly like the CRM sidebar groups its
+// own nav entries, just under one "Leads" header instead of CRM's split
+// Lead Management / Campaign Management groups.
+const NAV: NavEntry[] = [
+  { kind: 'link', href: '/', label: 'Overview', icon: LayoutGrid },
+  {
+    kind: 'group',
+    id: 'leads',
+    group: 'Leads',
+    items: [
+      { href: '/leads', label: 'Leads', icon: Users },
+      { href: '/segments', label: 'Segments', icon: Target },
+      { href: '/campaigns/email', label: 'Email Campaigns', icon: Mail },
+      { href: '/campaigns/whatsapp', label: 'WhatsApp Campaigns', icon: MessageCircle },
+    ],
+  },
+  { kind: 'link', href: '/inventory', label: 'My Inventory', icon: Car },
+  { kind: 'link', href: '/orders', label: 'Orders', icon: ClipboardList },
+  { kind: 'link', href: '/invoices', label: 'Invoices', icon: FileText },
+  { kind: 'link', href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },
+  { kind: 'link', href: '/service', label: 'Service Tickets', icon: Wrench },
 ]
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
@@ -44,6 +62,15 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'locked' | 'unreachable'>('loading')
   const [signingOut, setSigningOut] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['leads']))
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   const load = useCallback(async () => {
     const { ok, status, data } = await crmFetch('/api/v1/dealer-portal/overview')
@@ -139,22 +166,32 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-0.5 px-3">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={[
-                  'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  active ? 'bg-stone/15 text-slate' : 'text-ink/60 hover:bg-sand/10 hover:text-ink',
-                ].join(' ')}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
+          {NAV.map((entry) =>
+            entry.kind === 'link' ? (
+              <PortalNavLink key={entry.href} {...entry} active={pathname === entry.href} />
+            ) : (
+              <div key={entry.id} className="mb-1 mt-2 first:mt-0">
+                <button
+                  onClick={() => toggleGroup(entry.id)}
+                  className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40"
+                >
+                  <span>{entry.group}</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${openGroups.has(entry.id) ? '' : '-rotate-90'}`} />
+                </button>
+                {openGroups.has(entry.id) && (
+                  <div className="space-y-0.5">
+                    {entry.items.map((item) => (
+                      <PortalNavLink
+                        key={item.href}
+                        {...item}
+                        active={pathname === item.href || pathname?.startsWith(item.href + '/')}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             )
-          })}
+          )}
         </nav>
 
         <div className="border-t border-ink/[0.07] p-4">
@@ -183,6 +220,21 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
+  )
+}
+
+function PortalNavLink({ href, label, icon: Icon, active }: NavItem & { active?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={[
+        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+        active ? 'bg-stone/15 text-slate' : 'text-ink/60 hover:bg-sand/10 hover:text-ink',
+      ].join(' ')}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </Link>
   )
 }
 
