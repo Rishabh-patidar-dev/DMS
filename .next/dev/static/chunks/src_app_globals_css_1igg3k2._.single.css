@@ -49,6 +49,7 @@
     --color-red-400: #ff6568;
     --color-red-500: #fb2c36;
     --color-red-600: #e40014;
+    --color-red-700: #bf000f;
     --color-amber-100: #fef3c6;
     --color-amber-700: #b75000;
     --color-emerald-100: #d0fae5;
@@ -105,6 +106,7 @@
       --color-red-400: lab(63.7053% 60.7449 31.3109);
       --color-red-500: lab(55.4814% 75.0732 48.8528);
       --color-red-600: lab(48.4493% 77.4328 61.5452);
+      --color-red-700: lab(40.4273% 67.2623 53.7441);
       --color-amber-100: lab(95.916% -1.2165 23.111);
       --color-amber-700: lab(47.2709% 42.9082 69.2966);
       --color-emerald-100: lab(94.9004% -17.0769 5.63836);
@@ -421,6 +423,10 @@
     margin-top: var(--spacing);
   }
 
+  .mt-1\.5 {
+    margin-top: calc(var(--spacing) * 1.5);
+  }
+
   .mt-2 {
     margin-top: calc(var(--spacing) * 2);
   }
@@ -501,6 +507,10 @@
     display: inline-flex;
   }
 
+  .table {
+    display: table;
+  }
+
   .h-2 {
     height: calc(var(--spacing) * 2);
   }
@@ -519,6 +529,10 @@
 
   .h-5 {
     height: calc(var(--spacing) * 5);
+  }
+
+  .h-6 {
+    height: calc(var(--spacing) * 6);
   }
 
   .h-7 {
@@ -567,6 +581,10 @@
 
   .w-5 {
     width: calc(var(--spacing) * 5);
+  }
+
+  .w-6 {
+    width: calc(var(--spacing) * 6);
   }
 
   .w-7 {
@@ -1020,16 +1038,6 @@
     }
   }
 
-  .bg-stone\/25 {
-    background-color: var(--stone);
-  }
-
-  @supports (color: color-mix(in lab, red, red)) {
-    .bg-stone\/25 {
-      background-color: color-mix(in oklab, var(--stone) 25%, transparent);
-    }
-  }
-
   .bg-transparent {
     background-color: #0000;
   }
@@ -1038,8 +1046,16 @@
     background-color: var(--color-white);
   }
 
+  .object-contain {
+    object-fit: contain;
+  }
+
   .p-1 {
     padding: var(--spacing);
+  }
+
+  .p-3 {
+    padding: calc(var(--spacing) * 3);
   }
 
   .p-4 {
@@ -1160,6 +1176,10 @@
 
   .text-right {
     text-align: right;
+  }
+
+  .align-top {
+    vertical-align: top;
   }
 
   .font-mono {
@@ -1346,6 +1366,10 @@
     color: var(--color-red-600);
   }
 
+  .text-red-700 {
+    color: var(--color-red-700);
+  }
+
   .text-sand {
     color: var(--sand);
   }
@@ -1514,6 +1538,10 @@
       .hover\:bg-mint\/40:hover {
         background-color: color-mix(in oklab, var(--mint) 40%, transparent);
       }
+    }
+
+    .hover\:bg-red-100:hover {
+      background-color: var(--color-red-100);
     }
 
     .hover\:bg-red-600:hover {

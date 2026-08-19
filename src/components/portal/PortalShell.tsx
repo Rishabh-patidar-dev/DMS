@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Zap, LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users, WifiOff,
+  LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users, WifiOff,
   Target, Mail, MessageCircle,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
@@ -127,11 +127,12 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-brand-white">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-ink/[0.07] bg-white lg:flex">
         <div className="flex items-center gap-2.5 px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone/25">
-            <Zap className="h-4 w-4 text-slate" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/luxus-green-logo.webp" alt="Luxus Green Mobility" className="h-7 w-7 object-contain" />
           </div>
           <div>
-            <p className="text-sm font-semibold leading-tight text-ink">Voltmark DMS</p>
+            <p className="text-sm font-semibold leading-tight text-ink">Luxus Green DMS</p>
             <p className="text-[11px] leading-tight text-sand">Dealer Portal</p>
           </div>
         </div>
@@ -172,8 +173,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-ink/[0.07] bg-white px-6 py-3 lg:hidden">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-slate" />
-            <span className="text-sm font-semibold text-ink">Voltmark DMS</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/luxus-green-logo.webp" alt="Luxus Green Mobility" className="h-5 w-5 object-contain" />
+            <span className="text-sm font-semibold text-ink">Luxus Green DMS</span>
           </div>
           <button onClick={handleSignOut} className="text-xs text-sand hover:text-ink">Sign out</button>
         </header>
