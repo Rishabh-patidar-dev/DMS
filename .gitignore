@@ -1,1 +1,22 @@
+# dependencies
 node_modules
+
+# next.js build output / dev cache
+.next/
+out/
+build/
+next-env.d.ts
+
+# typescript
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# env files — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Lock, Users, WifiOff,
-  Target, Mail, MessageCircle,
+  Target, Mail, MessageCircle, FileText,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 
@@ -33,6 +33,7 @@ const NAV = [
   { href: '/campaigns/whatsapp', label: 'WhatsApp Campaigns', icon: MessageCircle },
   { href: '/inventory', label: 'My Inventory', icon: Car },
   { href: '/orders', label: 'Orders', icon: ClipboardList },
+  { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },
   { href: '/service', label: 'Service Tickets', icon: Wrench },
 ]
