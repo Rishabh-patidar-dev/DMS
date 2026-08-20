@@ -1,17 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, FileText, Printer, CheckCircle2, AlertTriangle, PackageMinus } from 'lucide-react'
+import { Loader2, FileText, Printer, CheckCircle2, AlertTriangle, PackageMinus, XCircle, MessageSquare } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader } from '@/components/portal/StatTile'
 
 type Invoice = {
   id: number
   invoiceNumber: string
-  type: 'CONFIRMATION' | 'OUT_OF_STOCK' | 'PARTIAL'
+  type: 'CONFIRMATION' | 'OUT_OF_STOCK' | 'PARTIAL' | 'CANCELLATION' | 'CUSTOM'
   item: string
-  requestedQuantity: number
-  fulfilledQuantity: number
+  requestedQuantity: number | null
+  fulfilledQuantity: number | null
   expectedRestockDate: string | null
   message: string | null
   issuedAt: string
@@ -21,6 +21,8 @@ const TYPE_META: Record<Invoice['type'], { label: string; icon: typeof FileText;
   CONFIRMATION: { label: 'Order confirmed', icon: CheckCircle2, className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   PARTIAL: { label: 'Partial fulfillment', icon: PackageMinus, className: 'bg-amber-50 text-amber-700 border-amber-200' },
   OUT_OF_STOCK: { label: 'Out of stock', icon: AlertTriangle, className: 'bg-red-50 text-red-700 border-red-200' },
+  CANCELLATION: { label: 'Order cancellation', icon: XCircle, className: 'bg-red-50 text-red-700 border-red-200' },
+  CUSTOM: { label: 'General notice', icon: MessageSquare, className: 'bg-slate-50 text-slate-700 border-slate-200' },
 }
 
 function printInvoice(inv: Invoice) {
@@ -44,10 +46,10 @@ function printInvoice(inv: Invoice) {
     <h1>${meta.label}</h1>
     <div class="muted">${inv.invoiceNumber} · issued ${new Date(inv.issuedAt).toLocaleDateString()}</div>
     <table>
-      <tr><td>Item</td><td>${inv.item}</td></tr>
-      <tr><td>Requested quantity</td><td>${inv.requestedQuantity}</td></tr>
-      <tr><td>${inv.type === 'CONFIRMATION' ? 'Confirmed quantity' : 'Fulfilled now'}</td><td>${inv.fulfilledQuantity}</td></tr>
-      ${restock ? `<tr><td>Expected date for order renewal</td><td>${restock}</td></tr>` : ''}
+      <tr><td>Subject</td><td>${inv.item}</td></tr>
+      ${inv.requestedQuantity != null ? `<tr><td>Requested quantity</td><td>${inv.requestedQuantity}</td></tr>` : ''}
+      ${inv.fulfilledQuantity != null ? `<tr><td>${inv.type === 'CONFIRMATION' ? 'Confirmed quantity' : 'Fulfilled now'}</td><td>${inv.fulfilledQuantity}</td></tr>` : ''}
+      ${restock ? `<tr><td>Expected date</td><td>${restock}</td></tr>` : ''}
     </table>
     ${inv.message ? `<div class="msg">${inv.message}</div>` : ''}
     <div class="foot">Issued by Order Management — Luxus Green Mobility.</div>
@@ -71,7 +73,7 @@ export default function InvoicesPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <PageHeader title="Invoices" subtitle="Order confirmations, out-of-stock notices, and partial-fulfillment offers from the manufacturer." />
+      <PageHeader title="Invoices" subtitle="Order confirmations, out-of-stock notices, partial-fulfillment offers, and any other document the manufacturer sends you." />
 
       <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
         <table className="w-full text-sm">
@@ -102,7 +104,9 @@ export default function InvoicesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-ink">{inv.item}</td>
-                  <td className="px-4 py-3 text-ink/70">{inv.fulfilledQuantity} / {inv.requestedQuantity}</td>
+                  <td className="px-4 py-3 text-ink/70">
+                    {inv.requestedQuantity != null || inv.fulfilledQuantity != null ? `${inv.fulfilledQuantity ?? '—'} / ${inv.requestedQuantity ?? '—'}` : '—'}
+                  </td>
                   <td className="px-4 py-3 text-ink/50">{new Date(inv.issuedAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => printInvoice(inv)} className="inline-flex items-center gap-1 rounded-md border border-ink/15 bg-white px-2 py-1 text-[11px] font-medium text-ink/70 hover:bg-ink/5">
