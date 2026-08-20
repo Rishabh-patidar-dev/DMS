@@ -137,11 +137,6 @@ function ConfirmedNote() {
   )
 }
 
-const SEGMENTS = [
-  { value: 'L5', label: 'L5' },
-  { value: 'L3', label: 'L3' },
-]
-
 export default function OrdersPage() {
   const [tab, setTab] = useState<'vehicles' | 'parts'>('vehicles')
   const [transfers, setTransfers] = useState<StockTransfer[]>([])
@@ -261,16 +256,36 @@ export default function OrdersPage() {
   )
 }
 
+type CatalogItem = { model: string; segment: string; application: string }
+
+// One dropdown, not a free-text Model field + separate Segment picker — a
+// dealer can only ever pick a real {model, segment} pair straight from the
+// manufacturer's own catalog, so Check Inventory's exact-match comparison
+// can never silently miss due to a typo or a model paired with the wrong
+// segment.
 function VehicleOrderForm({ onDone }: { onDone: () => void }) {
-  const [model, setModel] = useState('')
-  const [segment, setSegment] = useState('L5')
+  const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const [loadingCatalog, setLoadingCatalog] = useState(true)
+  const [selected, setSelected] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    crmFetch('/api/v1/dealer-portal/vehicle-catalog').then(({ data }) => {
+      const items: CatalogItem[] = data?.items ?? []
+      setCatalog(items)
+      if (items.length > 0) setSelected(`${items[0].model}|${items[0].segment}`)
+      setLoadingCatalog(false)
+    })
+  }, [])
+
+  const catalogOptions = catalog.map((c) => ({ value: `${c.model}|${c.segment}`, label: `${c.model} (${c.segment})` }))
+
   const submit = async () => {
-    if (!model) return
+    const [model, segment] = selected.split('|')
+    if (!model || !segment) return
     setSaving(true)
     setError(null)
     const { ok, data } = await crmFetch('/api/v1/dealer-portal/stock-transfers', {
@@ -285,13 +300,21 @@ function VehicleOrderForm({ onDone }: { onDone: () => void }) {
   return (
     <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Input label="Model" placeholder="e.g. Vikas Lifter" value={model} onChange={(e) => setModel(e.target.value)} required />
-        <Select label="Segment" options={SEGMENTS} value={segment} onChange={(e) => setSegment(e.target.value)} />
+        <div className="md:col-span-2">
+          <Select
+            label="Vehicle"
+            options={catalogOptions}
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            disabled={loadingCatalog || catalogOptions.length === 0}
+            hint={loadingCatalog ? 'Loading catalog…' : undefined}
+          />
+        </div>
         <Input label="Quantity" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
         <Input label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!model || saving} loading={saving} onClick={submit}>
+      <Button size="sm" className="mt-3" disabled={!selected || saving} loading={saving} onClick={submit}>
         Place vehicle order
       </Button>
     </div>
