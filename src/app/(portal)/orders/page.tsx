@@ -206,7 +206,7 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-ink/70 align-top">{t.quantity}</td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={t.status} />
-                    {t.status === 'DISPUTED' && t.stockNotice?.status === 'SENT' && (
+                    {t.status === 'Close' && t.stockNotice?.status === 'SENT' && (
                       <OutOfStockNoticeCard orderNumber={t.requestNumber} item={`${t.model} (${t.segment})`} notice={t.stockNotice} orderId={t.id} endpoint="stock-transfers" onResponded={load} />
                     )}
                     {t.status === 'APPROVED' && <ConfirmedNote />}
@@ -241,7 +241,7 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-ink/70 align-top">{s.quantity}</td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={s.status} />
-                    {s.status === 'DISPUTED' && s.stockNotice?.status === 'SENT' && (
+                    {s.status === 'Close' && s.stockNotice?.status === 'SENT' && (
                       <OutOfStockNoticeCard orderNumber={s.requestNumber} item={s.partName} notice={s.stockNotice} orderId={s.id} endpoint="spare-parts" onResponded={load} />
                     )}
                     {s.status === 'APPROVED' && <ConfirmedNote />}
