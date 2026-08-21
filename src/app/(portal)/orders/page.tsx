@@ -137,7 +137,7 @@ function ConfirmedNote() {
   )
 }
 
-const STATUS_OPTIONS = ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DELIVERED', 'DISPUTED', 'REJECTED', 'CANCELLED']
+const STATUS_OPTIONS = ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DELIVERED', 'Close', 'REJECTED', 'CANCELLED']
 
 export default function OrdersPage() {
   const [tab, setTab] = useState<'vehicles' | 'parts'>('vehicles')
@@ -169,8 +169,8 @@ export default function OrdersPage() {
     [spareParts, statusFilter]
   )
   const openCount = tab === 'vehicles'
-    ? transfers.filter((t) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DISPUTED'].includes(t.status)).length
-    : spareParts.filter((s) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DISPUTED'].includes(s.status)).length
+    ? transfers.filter((t) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'Close'].includes(t.status)).length
+    : spareParts.filter((s) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'Close'].includes(s.status)).length
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
@@ -233,7 +233,7 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-ink/70 align-top">{t.quantity}</td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={t.status} />
-                    {t.status === 'DISPUTED' && t.stockNotice?.status === 'SENT' && (
+                    {t.status === 'Close' && t.stockNotice?.status === 'SENT' && (
                       <OutOfStockNoticeCard orderNumber={t.requestNumber} item={`${t.model} (${t.segment})`} notice={t.stockNotice} orderId={t.id} endpoint="stock-transfers" onResponded={load} />
                     )}
                     {t.status === 'APPROVED' && <ConfirmedNote />}
@@ -268,7 +268,7 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-ink/70 align-top">{s.quantity}</td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={s.status} />
-                    {s.status === 'DISPUTED' && s.stockNotice?.status === 'SENT' && (
+                    {s.status === 'Close' && s.stockNotice?.status === 'SENT' && (
                       <OutOfStockNoticeCard orderNumber={s.requestNumber} item={s.partName} notice={s.stockNotice} orderId={s.id} endpoint="spare-parts" onResponded={load} />
                     )}
                     {s.status === 'APPROVED' && <ConfirmedNote />}
