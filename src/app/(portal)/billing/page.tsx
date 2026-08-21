@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Download, ChevronDown } from 'lucide-react'
-import { crmFetch, CRM_API_URL } from '@/lib/crm/dealerAuth'
+import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench } from 'lucide-react'
+import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -100,7 +100,8 @@ const EWAY_BILL_THRESHOLD = 50000
 
 const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
 
-type FormTarget = 'none' | 'manual' | { kind: 'booking'; id: number } | { kind: 'service'; id: number }
+type FormTarget = 'none' | { kind: 'manual-vehicle' } | { kind: 'manual-service' } | { kind: 'booking'; id: number } | { kind: 'service'; id: number }
+type Tab = 'vehicle' | 'service'
 
 export default function BillingPage() {
   const [bills, setBills] = useState<Bill[]>([])
@@ -109,6 +110,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState<FormTarget>('none')
   const [statusFilter, setStatusFilter] = useState('')
+  const [tab, setTab] = useState<Tab>('vehicle')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -125,29 +127,44 @@ export default function BillingPage() {
 
   useEffect(() => { load() }, [load])
 
+  const vehicleBills = useMemo(() => bills.filter((b) => b.billType === 'VEHICLE_SALE'), [bills])
+  const serviceBills = useMemo(() => bills.filter((b) => b.billType === 'SERVICE'), [bills])
+  const tabBills = tab === 'vehicle' ? vehicleBills : serviceBills
   const filtered = useMemo(
-    () => statusFilter ? bills.filter((b) => b.status === statusFilter) : bills,
-    [bills, statusFilter]
+    () => statusFilter ? tabBills.filter((b) => b.status === statusFilter) : tabBills,
+    [tabBills, statusFilter]
   )
-  const totalBilled = bills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.totalAmount), 0)
-  const totalCollected = bills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.amountPaid), 0)
+  const totalBilled = tabBills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.totalAmount), 0)
+  const totalCollected = tabBills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.amountPaid), 0)
   const outstanding = totalBilled - totalCollected
 
   const activeBooking = typeof showForm === 'object' && showForm.kind === 'booking' ? billable.find((b) => b.id === showForm.id) ?? null : null
   const activeServiceTicket = typeof showForm === 'object' && showForm.kind === 'service' ? billableService.find((t) => t.id === showForm.id) ?? null : null
+  const manualServiceMode = typeof showForm === 'object' && showForm.kind === 'manual-service'
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <PageHeader title="Billing / GST Invoicing" subtitle="GST-compliant sale bills, e-way bills for consignments over ₹50,000, and a real GSTR-1-style return export — all built off the bills you've actually issued." />
+      <PageHeader title="Billing / GST Invoicing" subtitle="GST-compliant sale bills and e-way bills for consignments over ₹50,000 — separated into vehicle sales and workshop servicing, same as Inventory keeps vehicles and spare parts apart." />
+
+      <div className="mb-4 flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-white p-1">
+        <button onClick={() => { setTab('vehicle'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicle' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+          <Car className="h-3.5 w-3.5" /> Vehicle Billing
+          <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{vehicleBills.length}</span>
+        </button>
+        <button onClick={() => { setTab('service'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'service' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+          <Wrench className="h-3.5 w-3.5" /> Service Billing
+          <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{serviceBills.length}</span>
+        </button>
+      </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile icon={Receipt} label="Bills issued" value={bills.length} />
+        <StatTile icon={Receipt} label="Bills issued" value={tabBills.length} />
         <StatTile icon={IndianRupee} label="Total billed" value={money(totalBilled)} />
         <StatTile icon={CheckCircle2} label="Collected" value={money(totalCollected)} />
         <StatTile icon={AlertCircle} label="Outstanding" value={money(outstanding)} />
       </div>
 
-      {billable.length > 0 && (
+      {tab === 'vehicle' && billable.length > 0 && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
           <h3 className="mb-3 text-sm font-semibold text-ink">Delivered bookings awaiting a bill</h3>
           <div className="space-y-2">
@@ -165,7 +182,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      {billableService.length > 0 && (
+      {tab === 'service' && billableService.length > 0 && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
           <h3 className="mb-3 text-sm font-semibold text-ink">Resolved service tickets awaiting a bill</h3>
           <div className="space-y-2">
@@ -183,9 +200,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      <GstReturnsSection />
-
-      <div className="mb-4 mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -193,8 +208,12 @@ export default function BillingPage() {
           placeholder="All statuses"
           className="w-52"
         />
-        <Button size="sm" variant="outline" onClick={() => setShowForm(showForm === 'manual' ? 'none' : 'manual')}>
-          <Plus className="h-4 w-4" /> Manual bill
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowForm(showForm !== 'none' ? 'none' : { kind: tab === 'vehicle' ? 'manual-vehicle' : 'manual-service' })}
+        >
+          <Plus className="h-4 w-4" /> Manual {tab === 'vehicle' ? 'vehicle' : 'service'} bill
         </Button>
       </div>
 
@@ -202,6 +221,7 @@ export default function BillingPage() {
         <BillForm
           booking={activeBooking}
           serviceTicket={activeServiceTicket}
+          manualService={manualServiceMode}
           onDone={() => { setShowForm('none'); load() }}
           onCancel={() => setShowForm('none')}
         />
@@ -211,7 +231,7 @@ export default function BillingPage() {
         {loading ? (
           <div className="py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-ink/[0.08] bg-white py-10 text-center text-sm text-ink/40">No bills issued yet.</div>
+          <div className="rounded-xl border border-ink/[0.08] bg-white py-10 text-center text-sm text-ink/40">No {tab === 'vehicle' ? 'vehicle sale' : 'service'} bills issued yet.</div>
         ) : filtered.map((bill) => (
           <BillCard key={bill.id} bill={bill} onChanged={load} />
         ))}
@@ -257,7 +277,6 @@ function BillCard({ bill, onChanged }: { bill: Bill; onChanged: () => void }) {
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-ink/50">{bill.billNumber}</span>
             <StatusBadge status={bill.status} />
-            <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase text-ink/50">{bill.billType === 'SERVICE' ? 'Service' : 'Vehicle sale'}</span>
             {bill.booking && <span className="text-xs text-ink/40">from {bill.booking.bookingNumber}</span>}
             {bill.serviceTicket && <span className="text-xs text-ink/40">from {bill.serviceTicket.ticketNumber}</span>}
             {bill.ewayBill && bill.ewayBill.status === 'GENERATED' && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">E-way bill issued</span>}
@@ -425,91 +444,15 @@ function EwayBillPanel({ bill, onChanged }: { bill: Bill; onChanged: () => void 
   )
 }
 
-function GstReturnsSection() {
-  const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
-  const [open, setOpen] = useState(false)
-  const [summary, setSummary] = useState<{ invoiceCount: number; totalTaxableValue: number; totalCgst: number; totalSgst: number; totalIgst: number; totalValue: number } | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function viewSummary() {
-    setOpen(true)
-    setLoading(true)
-    setError(null)
-    const { ok, data } = await crmFetch(`/api/v1/dealer-portal/gst/returns?month=${month}&year=${year}`)
-    setLoading(false)
-    if (!ok) { setError(data.message ?? 'Could not load return summary'); return }
-    setSummary(data.summary)
-  }
-
-  async function downloadCsv() {
-    setDownloading(true)
-    setError(null)
-    try {
-      const res = await fetch(`${CRM_API_URL}/api/v1/dealer-portal/gst/returns?month=${month}&year=${year}&format=csv`, { credentials: 'include' })
-      if (!res.ok) { setError('Could not download return file'); return }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `GSTR1-${year}-${String(month).padStart(2, '0')}.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  return (
-    <div className="rounded-xl border border-ink/[0.08] bg-white p-4">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Download className="h-4 w-4 text-slate" /> GST Return Filing</h3>
-        <ChevronDown className={`h-4 w-4 text-ink/40 transition-transform ${open ? '' : '-rotate-90'}`} />
-      </button>
-      {open && (
-        <div className="mt-3">
-          <p className="mb-3 text-xs text-ink/50">GSTR-1-style outward-supply summary, built from bills actually issued in the period — ready to upload to the GST portal.</p>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink/80">Month</label>
-              <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="rounded-md border border-ink/10 bg-brand-white px-3 py-2.5 text-sm text-ink">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('en-IN', { month: 'long' })}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink/80">Year</label>
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="rounded-md border border-ink/10 bg-brand-white px-3 py-2.5 text-sm text-ink">
-                {[year - 1, year, year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-            <Button size="sm" variant="outline" onClick={viewSummary} loading={loading}>View summary</Button>
-            <Button size="sm" onClick={downloadCsv} loading={downloading}>
-              <Download className="h-3.5 w-3.5" /> Download CSV
-            </Button>
-          </div>
-          {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-          {summary && (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <StatTile icon={Receipt} label="Invoices" value={summary.invoiceCount} />
-              <StatTile icon={IndianRupee} label="Taxable value" value={money(summary.totalTaxableValue)} />
-              <StatTile icon={IndianRupee} label="CGST" value={money(summary.totalCgst)} />
-              <StatTile icon={IndianRupee} label="SGST" value={money(summary.totalSgst)} />
-              <StatTile icon={IndianRupee} label="IGST" value={money(summary.totalIgst)} />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function BillForm({ booking, serviceTicket, onDone, onCancel }: { booking: BillableBooking | null; serviceTicket: BillableServiceTicket | null; onDone: () => void; onCancel: () => void }) {
-  const isService = serviceTicket != null
+function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
+  booking: BillableBooking | null
+  serviceTicket: BillableServiceTicket | null
+  manualService: boolean
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const isService = serviceTicket != null || manualService
+  const isManual = booking == null && serviceTicket == null
   const [customerName, setCustomerName] = useState(booking?.customerName ?? serviceTicket?.customerName ?? '')
   const [customerPhone, setCustomerPhone] = useState(booking?.customerPhone ?? serviceTicket?.customerPhone ?? '')
   const [customerAddress, setCustomerAddress] = useState('')
@@ -522,13 +465,14 @@ function BillForm({ booking, serviceTicket, onDone, onCancel }: { booking: Billa
   const [registrationAmount, setRegistrationAmount] = useState('')
   const [insuranceAmount, setInsuranceAmount] = useState('')
   const [laborCharge, setLaborCharge] = useState('')
+  const [manualPartsAmount, setManualPartsAmount] = useState('')
   const [discountAmount, setDiscountAmount] = useState('')
   const [gstRate, setGstRate] = useState('5')
   const [paymentMode, setPaymentMode] = useState('CASH')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const partsAmount = serviceTicket?.partsAmount ?? 0
+  const partsAmount = serviceTicket?.partsAmount ?? (manualService ? Number(manualPartsAmount) || 0 : 0)
   const taxable = isService
     ? (Number(laborCharge) || 0) + partsAmount - (Number(discountAmount) || 0)
     : (Number(exShowroomPrice) || 0) + (Number(accessoriesAmount) || 0) + (Number(registrationAmount) || 0) + (Number(insuranceAmount) || 0) - (Number(discountAmount) || 0)
@@ -543,15 +487,17 @@ function BillForm({ booking, serviceTicket, onDone, onCancel }: { booking: Billa
       body: JSON.stringify({
         bookingId: booking?.id,
         serviceTicketId: serviceTicket?.id,
-        customerName: (booking || serviceTicket) ? undefined : customerName,
-        customerPhone: (booking || serviceTicket) ? undefined : customerPhone,
-        model: (booking || serviceTicket) ? undefined : model,
-        vin: (booking || serviceTicket) ? undefined : (vin || undefined),
+        billType: manualService ? 'SERVICE' : undefined,
+        customerName: isManual ? customerName : undefined,
+        customerPhone: isManual ? customerPhone : undefined,
+        model: isManual ? model : undefined,
+        vin: isManual ? (vin || undefined) : undefined,
         customerAddress: customerAddress || undefined,
         customerState: customerState || undefined,
         customerGstin: customerGstin || undefined,
         exShowroomPrice: isService ? undefined : exShowroomPrice,
         laborCharge: isService ? laborCharge : undefined,
+        partsAmount: manualService ? (manualPartsAmount || undefined) : undefined,
         accessoriesAmount: accessoriesAmount || undefined, registrationAmount: registrationAmount || undefined,
         insuranceAmount: insuranceAmount || undefined, discountAmount: discountAmount || undefined, gstRate, paymentMode,
       }),
@@ -561,7 +507,9 @@ function BillForm({ booking, serviceTicket, onDone, onCancel }: { booking: Billa
     onDone()
   }
 
-  const valid = isService ? !!laborCharge : (exShowroomPrice && (booking || (customerName && customerPhone && model)))
+  const valid = isService
+    ? (!!laborCharge && (!isManual || (customerName && customerPhone && model)))
+    : (!!exShowroomPrice && (booking || (customerName && customerPhone && model)))
 
   return (
     <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
@@ -582,14 +530,17 @@ function BillForm({ booking, serviceTicket, onDone, onCancel }: { booking: Billa
         <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3">
           <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
           <Input label="Customer phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
-          <Input label="Model" value={model} onChange={(e) => setModel(e.target.value)} required />
-          <Input label="VIN (optional)" value={vin} onChange={(e) => setVin(e.target.value)} />
+          <Input label="Vehicle model" value={model} onChange={(e) => setModel(e.target.value)} required />
+          <Input label="VIN / vehicle number (optional)" value={vin} onChange={(e) => setVin(e.target.value)} />
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {isService ? (
-          <Input label="Labor charge, ₹" type="number" value={laborCharge} onChange={(e) => setLaborCharge(e.target.value)} required />
+          <>
+            <Input label="Labor charge, ₹" type="number" value={laborCharge} onChange={(e) => setLaborCharge(e.target.value)} required />
+            {manualService && <Input label="Spare parts used, ₹ (optional)" type="number" value={manualPartsAmount} onChange={(e) => setManualPartsAmount(e.target.value)} />}
+          </>
         ) : (
           <>
             <Input label="Ex-showroom price, ₹" type="number" value={exShowroomPrice} onChange={(e) => setExShowroomPrice(e.target.value)} required />
