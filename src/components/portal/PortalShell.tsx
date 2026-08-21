@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Users, WifiOff,
-  Target, Mail, MessageCircle, FileText, ChevronDown, Menu, X, Truck, UserCog, ShoppingBag,
+  Target, Mail, MessageCircle, FileText, ChevronDown, Menu, X, ShoppingBag, Receipt, PackagePlus,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 
@@ -58,6 +58,7 @@ const NAV: NavEntry[] = [
     group: 'Inventory & Stock',
     items: [
       { href: '/inventory', label: 'My Inventory', icon: Car },
+      { href: '/inventory/spare-parts', label: 'Spare Parts', icon: PackagePlus },
     ],
   },
   {
@@ -79,21 +80,19 @@ const NAV: NavEntry[] = [
   },
   {
     kind: 'group',
+    id: 'billing',
+    group: 'Billing',
+    items: [
+      { href: '/billing', label: 'Customer Bills', icon: Receipt },
+    ],
+  },
+  {
+    kind: 'group',
     id: 'service',
     group: 'Service',
     items: [
       { href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },
       { href: '/service', label: 'Service Tickets', icon: Wrench },
-    ],
-  },
-  {
-    kind: 'group',
-    id: 'hr',
-    group: 'HR',
-    items: [
-      { href: '/hr/employees', label: 'Employees', icon: UserCog },
-      { href: '/hr/attendance', label: 'Attendance & Leave', icon: ClipboardList },
-      { href: '/hr/payroll', label: 'Payroll', icon: Truck },
     ],
   },
 ]

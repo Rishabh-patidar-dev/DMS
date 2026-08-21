@@ -1,0 +1,176 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import { Loader2, Plus, PackagePlus, IndianRupee, AlertTriangle, Boxes } from 'lucide-react'
+import { crmFetch } from '@/lib/crm/dealerAuth'
+import { PageHeader, StatTile } from '@/components/portal/StatTile'
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+
+type SparePart = {
+  id: number
+  partName: string
+  partCode: string | null
+  quantityOnHand: number
+  unitPrice: string
+  updatedAt: string
+}
+
+const LOW_STOCK_THRESHOLD = 5
+const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
+
+export default function SparePartsInventoryPage() {
+  const [parts, setParts] = useState<SparePart[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await crmFetch('/api/v1/dealer-portal/spare-parts-stock')
+    setParts(data.parts ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const totalUnits = parts.reduce((sum, p) => sum + p.quantityOnHand, 0)
+  const totalValue = parts.reduce((sum, p) => sum + p.quantityOnHand * Number(p.unitPrice), 0)
+  const lowStockCount = parts.filter((p) => p.quantityOnHand <= LOW_STOCK_THRESHOLD).length
+
+  return (
+    <div className="mx-auto max-w-5xl px-6 py-10">
+      <PageHeader title="Spare Parts" subtitle="Your workshop's own spare-parts stock — this is what gets drawn down every time a mechanic uses a part servicing a vehicle." />
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile icon={Boxes} label="Distinct parts" value={parts.length} />
+        <StatTile icon={Boxes} label="Total units on hand" value={totalUnits} />
+        <StatTile icon={IndianRupee} label="Stock value" value={money(totalValue)} />
+        <StatTile icon={AlertTriangle} label="Low stock" value={lowStockCount} />
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+          <Plus className="h-4 w-4" /> Add / restock part
+        </Button>
+      </div>
+
+      {showForm && <NewPartForm onDone={() => { setShowForm(false); load() }} />}
+
+      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-ink/[0.07] text-left text-ink/50">
+              <th className="px-4 py-3 font-medium">Part</th>
+              <th className="px-4 py-3 font-medium">Code</th>
+              <th className="px-4 py-3 font-medium">On hand</th>
+              <th className="px-4 py-3 font-medium">Unit price</th>
+              <th className="px-4 py-3 font-medium">Stock value</th>
+              <th className="px-4 py-3 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
+            ) : parts.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">No spare parts on file yet.</td></tr>
+            ) : parts.map((p) => (
+              <PartRow key={p.id} part={p} onChanged={load} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function PartRow({ part, onChanged }: { part: SparePart; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [quantityOnHand, setQuantityOnHand] = useState(String(part.quantityOnHand))
+  const [unitPrice, setUnitPrice] = useState(part.unitPrice)
+  const [busy, setBusy] = useState(false)
+  const low = part.quantityOnHand <= LOW_STOCK_THRESHOLD
+
+  async function save() {
+    setBusy(true)
+    await crmFetch(`/api/v1/dealer-portal/spare-parts-stock/${part.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quantityOnHand, unitPrice }),
+    })
+    setBusy(false)
+    setEditing(false)
+    onChanged()
+  }
+
+  if (editing) {
+    return (
+      <tr className="border-b border-ink/[0.05] last:border-0 bg-brand-white">
+        <td className="px-4 py-2 text-ink">{part.partName}</td>
+        <td className="px-4 py-2 font-mono text-xs text-ink/60">{part.partCode ?? '—'}</td>
+        <td className="px-4 py-2"><Input value={quantityOnHand} type="number" onChange={(e) => setQuantityOnHand(e.target.value)} className="w-20 py-1.5" /></td>
+        <td className="px-4 py-2"><Input value={unitPrice} type="number" onChange={(e) => setUnitPrice(e.target.value)} className="w-24 py-1.5" /></td>
+        <td className="px-4 py-2 tabular-nums text-ink/70">{money(Number(quantityOnHand || 0) * Number(unitPrice || 0))}</td>
+        <td className="px-4 py-2">
+          <div className="flex gap-1.5">
+            <Button size="sm" disabled={busy} loading={busy} onClick={save}>Save</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <tr className="border-b border-ink/[0.05] last:border-0">
+      <td className="px-4 py-3 text-ink">{part.partName}</td>
+      <td className="px-4 py-3 font-mono text-xs text-ink/60">{part.partCode ?? '—'}</td>
+      <td className="px-4 py-3 tabular-nums">
+        <span className={low ? 'font-medium text-amber-600' : 'text-ink'}>{part.quantityOnHand}</span>
+        {low && <span className="ml-1.5 text-[10px] font-semibold uppercase text-amber-600">low</span>}
+      </td>
+      <td className="px-4 py-3 tabular-nums text-ink/70">{money(part.unitPrice)}</td>
+      <td className="px-4 py-3 tabular-nums text-ink/70">{money(part.quantityOnHand * Number(part.unitPrice))}</td>
+      <td className="px-4 py-3">
+        <button onClick={() => setEditing(true)} className="text-xs font-medium text-slate hover:underline">Edit</button>
+      </td>
+    </tr>
+  )
+}
+
+function NewPartForm({ onDone }: { onDone: () => void }) {
+  const [partName, setPartName] = useState('')
+  const [partCode, setPartCode] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [unitPrice, setUnitPrice] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    setSaving(true)
+    setError(null)
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts-stock', {
+      method: 'POST',
+      body: JSON.stringify({ partName, partCode: partCode || undefined, quantity, unitPrice: unitPrice || undefined }),
+    })
+    setSaving(false)
+    if (!ok) { setError(data.message ?? 'Could not add part'); return }
+    onDone()
+  }
+
+  const valid = partName && Number(quantity) > 0
+
+  return (
+    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+      <p className="mb-3 text-xs text-ink/50">Adding a part that already exists tops up its quantity instead of creating a duplicate.</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Input label="Part name" value={partName} onChange={(e) => setPartName(e.target.value)} required />
+        <Input label="Part code (optional)" value={partCode} onChange={(e) => setPartCode(e.target.value)} />
+        <Input label="Quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+        <Input label="Unit price, ₹" type="number" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
+      </div>
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
+        <PackagePlus className="h-4 w-4" /> Save
+      </Button>
+    </div>
+  )
+}
