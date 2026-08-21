@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2 } from 'lucide-react'
+import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2, X } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -290,12 +290,14 @@ type CatalogItem = { model: string; segment: string; application: string }
 // manufacturer's own catalog, so Check Inventory's exact-match comparison
 // can never silently miss due to a typo or a model paired with the wrong
 // segment.
+type VehicleLine = { selected: string; quantity: string; notes: string }
+let lineKeySeq = 0
+function newLineKey() { return ++lineKeySeq }
+
 function VehicleOrderForm({ onDone }: { onDone: () => void }) {
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [loadingCatalog, setLoadingCatalog] = useState(true)
-  const [selected, setSelected] = useState('')
-  const [quantity, setQuantity] = useState('1')
-  const [notes, setNotes] = useState('')
+  const [lines, setLines] = useState<{ key: number; line: VehicleLine }[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -303,81 +305,140 @@ function VehicleOrderForm({ onDone }: { onDone: () => void }) {
     crmFetch('/api/v1/dealer-portal/vehicle-catalog').then(({ data }) => {
       const items: CatalogItem[] = data?.items ?? []
       setCatalog(items)
-      if (items.length > 0) setSelected(`${items[0].model}|${items[0].segment}`)
+      const first = items.length > 0 ? `${items[0].model}|${items[0].segment}` : ''
+      setLines([{ key: newLineKey(), line: { selected: first, quantity: '1', notes: '' } }])
       setLoadingCatalog(false)
     })
   }, [])
 
   const catalogOptions = catalog.map((c) => ({ value: `${c.model}|${c.segment}`, label: `${c.model} (${c.segment})` }))
+  const defaultSelected = catalogOptions[0]?.value ?? ''
+
+  function updateLine(key: number, patch: Partial<VehicleLine>) {
+    setLines((prev) => prev.map((l) => l.key === key ? { ...l, line: { ...l.line, ...patch } } : l))
+  }
+  function addLine() {
+    setLines((prev) => [...prev, { key: newLineKey(), line: { selected: defaultSelected, quantity: '1', notes: '' } }])
+  }
+  function removeLine(key: number) {
+    setLines((prev) => prev.filter((l) => l.key !== key))
+  }
+
+  const validLines = lines.filter((l) => l.line.selected)
 
   const submit = async () => {
-    const [model, segment] = selected.split('|')
-    if (!model || !segment) return
+    if (validLines.length === 0) return
     setSaving(true)
     setError(null)
-    const { ok, data } = await crmFetch('/api/v1/dealer-portal/stock-transfers', {
-      method: 'POST',
-      body: JSON.stringify({ model, segment, quantity: Number(quantity) || 1, notes: notes || undefined }),
-    })
+    const failures: string[] = []
+    for (const { line } of validLines) {
+      const [model, segment] = line.selected.split('|')
+      if (!model || !segment) continue
+      const { ok, data } = await crmFetch('/api/v1/dealer-portal/stock-transfers', {
+        method: 'POST',
+        body: JSON.stringify({ model, segment, quantity: Number(line.quantity) || 1, notes: line.notes || undefined }),
+      })
+      if (!ok) failures.push(`${model}: ${data.message ?? 'failed'}`)
+    }
     setSaving(false)
-    if (!ok) { setError(data.message ?? 'Could not place order'); return }
+    if (failures.length > 0) { setError(failures.join('; ')); return }
     onDone()
   }
 
   return (
     <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <Select
-            label="Vehicle"
-            options={catalogOptions}
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            disabled={loadingCatalog || catalogOptions.length === 0}
-            hint={loadingCatalog ? 'Loading catalog…' : undefined}
-          />
-        </div>
-        <Input label="Quantity" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-        <Input label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="space-y-3">
+        {lines.map(({ key, line }) => (
+          <div key={key} className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
+            <Select
+              label="Vehicle"
+              options={catalogOptions}
+              value={line.selected}
+              onChange={(e) => updateLine(key, { selected: e.target.value })}
+              disabled={loadingCatalog || catalogOptions.length === 0}
+              hint={loadingCatalog ? 'Loading catalog…' : undefined}
+            />
+            <Input label="Quantity" type="number" min={1} value={line.quantity} onChange={(e) => updateLine(key, { quantity: e.target.value })} />
+            <Input label="Notes (optional)" value={line.notes} onChange={(e) => updateLine(key, { notes: e.target.value })} />
+            {lines.length > 1 && (
+              <button onClick={() => removeLine(key)} className="mb-0.5 flex h-9 w-9 items-center justify-center rounded-md text-ink/30 hover:bg-red-50 hover:text-red-500" aria-label="Remove line">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        ))}
       </div>
+      <button onClick={addLine} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
+        <Plus className="h-3.5 w-3.5" /> Add another vehicle
+      </button>
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!selected || saving} loading={saving} onClick={submit}>
-        Place vehicle order
+      <Button size="sm" className="mt-3" disabled={validLines.length === 0 || saving} loading={saving} onClick={submit}>
+        Place order{validLines.length > 1 ? ` (${validLines.length} vehicles)` : ''}
       </Button>
     </div>
   )
 }
 
+type SparePartLine = { partName: string; partCode: string; quantity: string }
+
 function SparePartOrderForm({ onDone }: { onDone: () => void }) {
-  const [partName, setPartName] = useState('')
-  const [partCode, setPartCode] = useState('')
-  const [quantity, setQuantity] = useState('1')
+  const [lines, setLines] = useState<{ key: number; line: SparePartLine }[]>(() => [
+    { key: newLineKey(), line: { partName: '', partCode: '', quantity: '1' } },
+  ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  function updateLine(key: number, patch: Partial<SparePartLine>) {
+    setLines((prev) => prev.map((l) => l.key === key ? { ...l, line: { ...l.line, ...patch } } : l))
+  }
+  function addLine() {
+    setLines((prev) => [...prev, { key: newLineKey(), line: { partName: '', partCode: '', quantity: '1' } }])
+  }
+  function removeLine(key: number) {
+    setLines((prev) => prev.filter((l) => l.key !== key))
+  }
+
+  const validLines = lines.filter((l) => l.line.partName.trim())
+
   const submit = async () => {
-    if (!partName) return
+    if (validLines.length === 0) return
     setSaving(true)
     setError(null)
-    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts', {
-      method: 'POST',
-      body: JSON.stringify({ partName, partCode: partCode || undefined, quantity: Number(quantity) || 1 }),
-    })
+    const failures: string[] = []
+    for (const { line } of validLines) {
+      const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts', {
+        method: 'POST',
+        body: JSON.stringify({ partName: line.partName, partCode: line.partCode || undefined, quantity: Number(line.quantity) || 1 }),
+      })
+      if (!ok) failures.push(`${line.partName}: ${data.message ?? 'failed'}`)
+    }
     setSaving(false)
-    if (!ok) { setError(data.message ?? 'Could not place order'); return }
+    if (failures.length > 0) { setError(failures.join('; ')); return }
     onDone()
   }
 
   return (
     <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <Input label="Part name" placeholder="e.g. Brake Pad Set" value={partName} onChange={(e) => setPartName(e.target.value)} required />
-        <Input label="Part code (optional)" value={partCode} onChange={(e) => setPartCode(e.target.value)} />
-        <Input label="Quantity" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+      <div className="space-y-3">
+        {lines.map(({ key, line }) => (
+          <div key={key} className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
+            <Input label="Part name" placeholder="e.g. Brake Pad Set" value={line.partName} onChange={(e) => updateLine(key, { partName: e.target.value })} required />
+            <Input label="Part code (optional)" value={line.partCode} onChange={(e) => updateLine(key, { partCode: e.target.value })} />
+            <Input label="Quantity" type="number" min={1} value={line.quantity} onChange={(e) => updateLine(key, { quantity: e.target.value })} />
+            {lines.length > 1 && (
+              <button onClick={() => removeLine(key)} className="mb-0.5 flex h-9 w-9 items-center justify-center rounded-md text-ink/30 hover:bg-red-50 hover:text-red-500" aria-label="Remove line">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        ))}
       </div>
+      <button onClick={addLine} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
+        <Plus className="h-3.5 w-3.5" /> Add another part
+      </button>
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!partName || saving} loading={saving} onClick={submit}>
-        Place spare-part order
+      <Button size="sm" className="mt-3" disabled={validLines.length === 0 || saving} loading={saving} onClick={submit}>
+        Place order{validLines.length > 1 ? ` (${validLines.length} parts)` : ''}
       </Button>
     </div>
   )
