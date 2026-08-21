@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
@@ -137,12 +137,15 @@ function ConfirmedNote() {
   )
 }
 
+const STATUS_OPTIONS = ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DELIVERED', 'DISPUTED', 'REJECTED', 'CANCELLED']
+
 export default function OrdersPage() {
   const [tab, setTab] = useState<'vehicles' | 'parts'>('vehicles')
   const [transfers, setTransfers] = useState<StockTransfer[]>([])
   const [spareParts, setSpareParts] = useState<SparePart[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -157,22 +160,46 @@ export default function OrdersPage() {
 
   useEffect(() => { load() }, [load])
 
+  const filteredTransfers = useMemo(
+    () => statusFilter ? transfers.filter((t) => t.status === statusFilter) : transfers,
+    [transfers, statusFilter]
+  )
+  const filteredSpareParts = useMemo(
+    () => statusFilter ? spareParts.filter((s) => s.status === statusFilter) : spareParts,
+    [spareParts, statusFilter]
+  )
+  const openCount = tab === 'vehicles'
+    ? transfers.filter((t) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DISPUTED'].includes(t.status)).length
+    : spareParts.filter((s) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DISPUTED'].includes(s.status)).length
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Orders" subtitle="Place vehicle stock and spare-part orders — these land directly in the manufacturer's order desk." />
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-white p-1">
-          <button onClick={() => setTab('vehicles')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicles' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+          <button onClick={() => { setTab('vehicles'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicles' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
             <Car className="h-3.5 w-3.5" /> Vehicles
+            <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{transfers.length}</span>
           </button>
-          <button onClick={() => setTab('parts')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'parts' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+          <button onClick={() => { setTab('parts'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'parts' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
             <Package className="h-3.5 w-3.5" /> Spare parts
+            <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{spareParts.length}</span>
           </button>
         </div>
-        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-          <Plus className="h-4 w-4" /> New order
-        </Button>
+        <div className="flex items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-ink/[0.08] bg-white px-3 py-2 text-xs text-ink/70"
+          >
+            <option value="">All statuses ({openCount} open)</option>
+            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+            <Plus className="h-4 w-4" /> New order
+          </Button>
+        </div>
       </div>
 
       {showForm && (
@@ -206,7 +233,7 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-ink/70 align-top">{t.quantity}</td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={t.status} />
-                    {t.status === 'Close' && t.stockNotice?.status === 'SENT' && (
+                    {t.status === 'DISPUTED' && t.stockNotice?.status === 'SENT' && (
                       <OutOfStockNoticeCard orderNumber={t.requestNumber} item={`${t.model} (${t.segment})`} notice={t.stockNotice} orderId={t.id} endpoint="stock-transfers" onResponded={load} />
                     )}
                     {t.status === 'APPROVED' && <ConfirmedNote />}
@@ -241,7 +268,7 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-ink/70 align-top">{s.quantity}</td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={s.status} />
-                    {s.status === 'Close' && s.stockNotice?.status === 'SENT' && (
+                    {s.status === 'DISPUTED' && s.stockNotice?.status === 'SENT' && (
                       <OutOfStockNoticeCard orderNumber={s.requestNumber} item={s.partName} notice={s.stockNotice} orderId={s.id} endpoint="spare-parts" onResponded={load} />
                     )}
                     {s.status === 'APPROVED' && <ConfirmedNote />}

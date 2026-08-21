@@ -24,6 +24,10 @@ type VehicleUnit = {
   createdAt: string
 }
 
+// Kept out of the gallery on request — not part of the dealer-facing lineup
+// this dealership actually sells.
+const GALLERY_EXCLUDED = new Set(['LX DV Mega', 'Queen Mini DLX'])
+
 function daysInStock(u: VehicleUnit): number | null {
   if (u.status === 'SOLD') return null
   const since = u.allocatedAt ?? u.createdAt
@@ -54,7 +58,7 @@ export default function InventoryPage() {
   const galleryByModel = useMemo(() => {
     const rows: Record<string, { segment: string; quantity: number }> = {}
     for (const u of units) {
-      if (u.status === 'SOLD' || !VEHICLE_IMAGES[u.model]) continue
+      if (u.status === 'SOLD' || !VEHICLE_IMAGES[u.model] || GALLERY_EXCLUDED.has(u.model)) continue
       rows[u.model] = rows[u.model] ?? { segment: u.segment, quantity: 0 }
       rows[u.model].quantity++
     }
@@ -77,15 +81,15 @@ export default function InventoryPage() {
           the manufacturer's own Vehicle Inventory page. */}
       {galleryByModel.length > 0 && (
         <div className="mb-8">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-9 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {galleryByModel.map((m) => (
               <div key={m.model} className="flex flex-col items-center text-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={VEHICLE_IMAGES[m.model]} alt={m.model} className="h-28 w-full object-contain drop-shadow-sm sm:h-32" />
-                <div className="mt-3 text-sm font-medium text-ink">{m.model}</div>
-                <div className="text-[11px] text-ink/40">{m.segment}</div>
-                <div className="mt-1 text-2xl font-semibold tabular-nums text-ink">{m.quantity}</div>
-                <div className="text-[11px] text-ink/40">on hand</div>
+                <img src={VEHICLE_IMAGES[m.model]} alt={m.model} className="h-16 w-full object-contain drop-shadow-sm sm:h-20" />
+                <div className="mt-2.5 text-xs font-medium leading-tight text-ink">{m.model}</div>
+                <div className="text-[10px] text-ink/40">{m.segment}</div>
+                <div className="mt-1 text-xl font-semibold tabular-nums text-ink">{m.quantity}</div>
+                <div className="text-[10px] text-ink/40">on hand</div>
               </div>
             ))}
           </div>

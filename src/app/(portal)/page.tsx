@@ -40,6 +40,15 @@ export default function OverviewPage() {
         <div className="py-10 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-ink/40" /></div>
       ) : overview ? (
         <>
+          {/* Dealer Performance KPIs — same definitions the OEM's own Dealer
+              Performance Dashboard spec uses, so this reads consistently
+              with whatever the manufacturer sees about this dealership. */}
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <PerformanceTile label="Lead conversion rate" value={overview.leadConversionRate} suffix="%" good={(v) => v >= 20} />
+            <PerformanceTile label="Avg. days in stock" value={overview.avgDaysInStock} suffix="d" good={(v) => v <= 30} invert />
+            <PerformanceTile label="Warranty claim rate" value={overview.warrantyClaimRate} suffix="%" good={(v) => v <= 5} invert />
+          </div>
+
           <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <StatTile icon={Users} label="Open leads" value={overview.openLeads} />
             <StatTile icon={Car} label="Allocated units" value={overview.vehicleCount} />
@@ -105,6 +114,13 @@ export default function OverviewPage() {
                 <p className="py-6 text-center text-xs text-ink/40">No invoices issued yet.</p>
               )}
             </ChartCard>
+            <ChartCard title="Service tickets, by status" subtitle="Open, in progress, and resolved">
+              {overview.ticketsByStatus.length > 0 ? (
+                <DonutChart data={overview.ticketsByStatus} centerLabel="tickets" />
+              ) : (
+                <p className="py-6 text-center text-xs text-ink/40">No service tickets yet.</p>
+              )}
+            </ChartCard>
           </div>
         </>
       ) : null}
@@ -126,6 +142,20 @@ export default function OverviewPage() {
           </Link>
         ))}
       </div>
+    </div>
+  )
+}
+
+function PerformanceTile({ label, value, suffix, good, invert }: { label: string; value: number | null; suffix: string; good: (v: number) => boolean; invert?: boolean }) {
+  const known = value != null
+  const isGood = known && good(value)
+  return (
+    <div className="rounded-xl border border-ink/[0.08] bg-white px-5 py-4">
+      <div className="text-xs font-medium text-ink/50">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold ${known ? (isGood ? 'text-emerald-600' : 'text-amber-600') : 'text-ink/30'}`}>
+        {known ? `${value}${suffix}` : '—'}
+      </div>
+      {known && <div className="mt-0.5 text-[11px] text-ink/40">{isGood ? (invert ? 'On track' : 'Healthy') : (invert ? 'Needs attention' : 'Below target')}</div>}
     </div>
   )
 }

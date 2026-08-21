@@ -49,6 +49,20 @@ export function StatusBadge({ status }: { status: string }) {
     LOST: 'bg-red-100 text-red-600',
     ACCEPTED: 'bg-blue-100 text-blue-700',
     ASSIGNED: 'bg-sand/15 text-sand',
+    ACTIVE: 'bg-emerald-100 text-emerald-700',
+    ON_LEAVE: 'bg-amber-100 text-amber-700',
+    SUSPENDED: 'bg-red-100 text-red-600',
+    TERMINATED: 'bg-ink/10 text-ink/50',
+    PRESENT: 'bg-emerald-100 text-emerald-700',
+    ABSENT: 'bg-red-100 text-red-600',
+    HALF_DAY: 'bg-amber-100 text-amber-700',
+    HOLIDAY: 'bg-blue-100 text-blue-700',
+    PENDING: 'bg-amber-100 text-amber-700',
+    GENERATED: 'bg-slate/15 text-slate',
+    PAID: 'bg-emerald-100 text-emerald-700',
+    BOOKED: 'bg-sand/15 text-sand',
+    CONFIRMED: 'bg-blue-100 text-blue-700',
+    ALLOCATED: 'bg-slate/15 text-slate',
   }
   return (
     <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${styles[status] ?? 'bg-ink/10 text-ink/50'}`}>
