@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Loader2, Plus, Search, CheckCircle2, XCircle } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Loader2, Plus, Search, CheckCircle2, XCircle, Paperclip } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
 
 type Claim = {
   id: number
@@ -22,6 +23,7 @@ export default function WarrantyPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -53,21 +55,36 @@ export default function WarrantyPage() {
               <th className="px-4 py-3 font-medium">Component</th>
               <th className="px-4 py-3 font-medium">Customer</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
             ) : claims.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">No warranty claims raised yet.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">No warranty claims raised yet.</td></tr>
             ) : claims.map((c) => (
-              <tr key={c.id} className="border-b border-ink/[0.05] last:border-0">
-                <td className="px-4 py-3 font-mono text-xs text-ink">{c.claimNumber}</td>
-                <td className="px-4 py-3 text-ink/70">{c.vehicleUnit ? `${c.vehicleUnit.model} · ${c.vehicleUnit.vin}` : '—'}</td>
-                <td className="px-4 py-3 text-ink/70">{c.componentUnit?.componentType ?? '—'}</td>
-                <td className="px-4 py-3 text-ink">{c.customerName}</td>
-                <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-              </tr>
+              <Fragment key={c.id}>
+                <tr className="border-b border-ink/[0.05] last:border-0">
+                  <td className="px-4 py-3 font-mono text-xs text-ink">{c.claimNumber}</td>
+                  <td className="px-4 py-3 text-ink/70">{c.vehicleUnit ? `${c.vehicleUnit.model} · ${c.vehicleUnit.vin}` : '—'}</td>
+                  <td className="px-4 py-3 text-ink/70">{c.componentUnit?.componentType ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink">{c.customerName}</td>
+                  <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setExpandedId(expandedId === c.id ? null : c.id)} className="flex items-center gap-1 text-xs text-ink/40 hover:text-slate">
+                      <Paperclip className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+                {expandedId === c.id && (
+                  <tr className="border-b border-ink/[0.05] last:border-0">
+                    <td colSpan={6} className="bg-brand-white px-4 py-3">
+                      <AttachmentUpload kind="WARRANTY_CLAIM" parentId={c.id} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

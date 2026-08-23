@@ -65,6 +65,9 @@ export function StatusBadge({ status }: { status: string }) {
     ALLOCATED: 'bg-slate/15 text-slate',
     ISSUED: 'bg-sand/15 text-sand',
     PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
+    VEHICLE_STOCK: 'bg-slate/15 text-slate',
+    SPARE_PARTS: 'bg-blue-100 text-blue-700',
+    OTHER: 'bg-ink/10 text-ink/50',
   }
   return (
     <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${styles[status] ?? 'bg-ink/10 text-ink/50'}`}>

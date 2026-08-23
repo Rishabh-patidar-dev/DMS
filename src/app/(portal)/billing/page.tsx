@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench } from 'lucide-react'
+import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench, Paperclip } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
 
 type BillableBooking = {
   id: number
@@ -244,6 +245,7 @@ function BillCard({ bill, onChanged }: { bill: Bill; onChanged: () => void }) {
   const [showPay, setShowPay] = useState(false)
   const [showInvoice, setShowInvoice] = useState(false)
   const [showEway, setShowEway] = useState(false)
+  const [showAttachments, setShowAttachments] = useState(false)
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -303,6 +305,9 @@ function BillCard({ bill, onChanged }: { bill: Bill; onChanged: () => void }) {
               <Truck className="h-3.5 w-3.5" /> E-way bill
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={() => setShowAttachments((v) => !v)}>
+            <Paperclip className="h-3.5 w-3.5" /> Attachments
+          </Button>
           {!['PAID', 'CANCELLED'].includes(bill.status) && (
             <>
               <Button size="sm" variant="outline" disabled={busy} onClick={() => setShowPay((v) => !v)}>Record payment</Button>
@@ -314,6 +319,7 @@ function BillCard({ bill, onChanged }: { bill: Bill; onChanged: () => void }) {
 
       {showInvoice && <GstInvoiceDetail bill={bill} />}
       {showEway && <EwayBillPanel bill={bill} onChanged={onChanged} />}
+      {showAttachments && <div className="mt-3"><AttachmentUpload kind="CUSTOMER_BILL" parentId={bill.id} /></div>}
 
       {showPay && (
         <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-ink/[0.08] bg-brand-white p-3">

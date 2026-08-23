@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Wrench, ClipboardList, CheckCircle2, PackagePlus, X } from 'lucide-react'
+import { Loader2, Plus, Wrench, ClipboardList, CheckCircle2, PackagePlus, X, Paperclip } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
 
 type PartUsage = { id: number; partName: string; quantityUsed: number; unitPrice: string; usedAt: string }
 type Ticket = {
@@ -159,6 +160,7 @@ const NEXT_STATUS: Record<string, { status: string; label: string }[]> = {
 
 function TicketCard({ ticket, spareParts, onChanged }: { ticket: Ticket; spareParts: SparePart[]; onChanged: () => void }) {
   const [showParts, setShowParts] = useState(false)
+  const [showAttachments, setShowAttachments] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canAddParts = ['IN_PROGRESS', 'AWAITING_PARTS'].includes(ticket.status)
@@ -196,6 +198,9 @@ function TicketCard({ ticket, spareParts, onChanged }: { ticket: Ticket; sparePa
               <PackagePlus className="h-3.5 w-3.5" /> Parts
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={() => setShowAttachments((v) => !v)}>
+            <Paperclip className="h-3.5 w-3.5" /> Attachments
+          </Button>
           {NEXT_STATUS[ticket.status]?.map((n) => (
             <Button key={n.status} size="sm" variant={n.status === 'RESOLVED' ? 'primary' : 'outline'} disabled={busy} onClick={() => setStatus(n.status)}>
               {n.label}
@@ -212,6 +217,7 @@ function TicketCard({ ticket, spareParts, onChanged }: { ticket: Ticket; sparePa
           onChanged={onChanged}
         />
       )}
+      {showAttachments && <div className="mt-3"><AttachmentUpload kind="SERVICE_TICKET" parentId={ticket.id} /></div>}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
     </div>
   )

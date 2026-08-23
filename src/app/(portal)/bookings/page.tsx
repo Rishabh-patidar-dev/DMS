@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, ShoppingBag, IndianRupee, CheckCircle2, Car } from 'lucide-react'
+import { Loader2, Plus, ShoppingBag, IndianRupee, CheckCircle2, Car, Paperclip } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
 
 type CatalogItem = { model: string; segment: string }
 type AvailableUnit = { id: number; vin: string; model: string; segment: string; color: string | null; status: string }
@@ -101,6 +102,7 @@ export default function BookingsPage() {
 
 function BookingCard({ booking, onChanged }: { booking: Booking; onChanged: () => void }) {
   const [showAllocate, setShowAllocate] = useState(false)
+  const [showAttachments, setShowAttachments] = useState(false)
   const [units, setUnits] = useState<AvailableUnit[]>([])
   const [selectedUnit, setSelectedUnit] = useState('')
   const [busy, setBusy] = useState(false)
@@ -144,21 +146,28 @@ function BookingCard({ booking, onChanged }: { booking: Booking; onChanged: () =
           )}
         </div>
 
-        {!['DELIVERED', 'CANCELLED'].includes(booking.status) && (
-          <div className="flex flex-wrap gap-1.5">
-            {booking.status === 'BOOKED' && (
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => patch({ status: 'CONFIRMED' })}>Confirm</Button>
-            )}
-            {(booking.status === 'BOOKED' || booking.status === 'CONFIRMED') && (
-              <Button size="sm" variant="outline" disabled={busy} onClick={openAllocate}>Allocate unit</Button>
-            )}
-            {booking.status === 'ALLOCATED' && (
-              <Button size="sm" disabled={busy} onClick={() => patch({ status: 'DELIVERED' })}>Mark delivered</Button>
-            )}
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => patch({ status: 'CANCELLED', cancellationReason: 'Cancelled by dealer' })}>Cancel</Button>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => setShowAttachments((v) => !v)}>
+            <Paperclip className="h-3.5 w-3.5" /> Attachments
+          </Button>
+          {!['DELIVERED', 'CANCELLED'].includes(booking.status) && (
+            <>
+              {booking.status === 'BOOKED' && (
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => patch({ status: 'CONFIRMED' })}>Confirm</Button>
+              )}
+              {(booking.status === 'BOOKED' || booking.status === 'CONFIRMED') && (
+                <Button size="sm" variant="outline" disabled={busy} onClick={openAllocate}>Allocate unit</Button>
+              )}
+              {booking.status === 'ALLOCATED' && (
+                <Button size="sm" disabled={busy} onClick={() => patch({ status: 'DELIVERED' })}>Mark delivered</Button>
+              )}
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => patch({ status: 'CANCELLED', cancellationReason: 'Cancelled by dealer' })}>Cancel</Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {showAttachments && <div className="mt-3"><AttachmentUpload kind="BOOKING" parentId={booking.id} /></div>}
 
       {showAllocate && (
         <div className="mt-3 rounded-lg border border-ink/[0.08] bg-brand-white p-3">

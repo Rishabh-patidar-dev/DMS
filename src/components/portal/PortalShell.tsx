@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Users, WifiOff,
-  Target, Mail, MessageCircle, FileText, ChevronDown, Menu, X, ShoppingBag, Receipt, PackagePlus,
+  Target, Mail, MessageCircle, FileText, ChevronDown, Menu, X, ShoppingBag, Receipt, PackagePlus, Scan,
 } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 
@@ -68,6 +68,7 @@ const NAV: NavEntry[] = [
     items: [
       { href: '/orders', label: 'Stock Orders', icon: ClipboardList },
       { href: '/invoices', label: 'Invoices', icon: FileText },
+      { href: '/purchase-invoices', label: 'Purchase Invoices', icon: Scan },
     ],
   },
   {
