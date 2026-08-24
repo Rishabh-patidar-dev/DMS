@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Trash2, Users } from 'lucide-react'
+import { Plus, Trash2, Users, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -24,11 +24,19 @@ interface SegmentRow {
 export default function SegmentsPage() {
   const [segments, setSegments] = useState<SegmentRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await crmFetch('/api/v1/dealer-portal/segments')
+    setLoadError(null)
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/segments')
+    if (!ok) {
+      console.error('[SegmentsPage] failed to load segments:', data.message)
+      setLoadError(data.message ?? 'Could not load segments')
+      setLoading(false)
+      return
+    }
     setSegments(data.segments ?? [])
     setLoading(false)
   }, [])
@@ -55,6 +63,15 @@ export default function SegmentsPage() {
         title="Segments"
         subtitle="Saved filters over your own leads — used as the audience for your Email and WhatsApp campaigns. Membership is always live and scoped to your dealership only."
       />
+
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex justify-end">
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>

@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import { Loader2, Plus, Search, CheckCircle2, XCircle, Paperclip } from 'lucide-react'
+import { Loader2, Plus, Search, CheckCircle2, XCircle, Paperclip, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -22,12 +22,20 @@ type Claim = {
 export default function WarrantyPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await crmFetch('/api/v1/dealer-portal/warranty-claims')
+    setLoadError(null)
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/warranty-claims')
+    if (!ok) {
+      console.error('[WarrantyPage] failed to load claims:', data.message)
+      setLoadError(data.message ?? 'Could not load warranty claims')
+      setLoading(false)
+      return
+    }
     setClaims(data.claims ?? [])
     setLoading(false)
   }, [])
@@ -37,6 +45,15 @@ export default function WarrantyPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Warranty Claims" subtitle="Check coverage on a VIN and raise a claim — it's adjudicated automatically and lands in the manufacturer's Claims & Coverage queue." />
+
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex justify-end">
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>

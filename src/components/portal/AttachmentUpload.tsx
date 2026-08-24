@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Paperclip, Upload, X, FileText } from 'lucide-react'
+import { Loader2, Paperclip, Upload, X, FileText, RefreshCw } from 'lucide-react'
 import { crmFetch, CRM_API_URL } from '@/lib/crm/dealerAuth'
 
 type AttachmentKind = 'CUSTOMER_BILL' | 'SERVICE_TICKET' | 'BOOKING' | 'WARRANTY_CLAIM'
@@ -36,6 +36,7 @@ function formatSize(bytes: number | null) {
 export function AttachmentUpload({ kind, parentId }: { kind: AttachmentKind; parentId: number }) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -43,7 +44,14 @@ export function AttachmentUpload({ kind, parentId }: { kind: AttachmentKind; par
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await crmFetch(`/api/v1/dealer-portal/${route}/${parentId}/attachments`)
+    setLoadError(null)
+    const { ok, data } = await crmFetch(`/api/v1/dealer-portal/${route}/${parentId}/attachments`)
+    if (!ok) {
+      console.error('[AttachmentUpload] failed to load attachments:', data.message)
+      setLoadError(data.message ?? 'Could not load attachments')
+      setLoading(false)
+      return
+    }
     setAttachments(data.attachments ?? [])
     setLoading(false)
   }, [route, parentId])
@@ -81,6 +89,13 @@ export function AttachmentUpload({ kind, parentId }: { kind: AttachmentKind; par
 
       {loading ? (
         <div className="py-3 text-center text-ink/30"><Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /></div>
+      ) : loadError ? (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
+          <span>{loadError}</span>
+          <button onClick={load} className="inline-flex shrink-0 items-center gap-1 rounded border border-red-200 bg-white px-2 py-0.5 font-medium text-red-700 hover:bg-red-100">
+            <RefreshCw className="h-3 w-3" /> Retry
+          </button>
+        </div>
       ) : attachments.length === 0 ? (
         <p className="mb-2 text-xs text-ink/40">No files attached yet.</p>
       ) : (

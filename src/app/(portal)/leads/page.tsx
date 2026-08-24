@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Plus, Search, Users, Gauge, CheckCircle2 } from 'lucide-react'
+import { Loader2, Plus, Search, Users, Gauge, CheckCircle2, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge, StatTile } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -29,15 +29,23 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const params = new URLSearchParams()
     if (statusFilter) params.set('status', statusFilter)
     if (search) params.set('search', search)
     const qs = params.toString()
-    const { data } = await crmFetch(`/api/v1/dealer-portal/leads${qs ? `?${qs}` : ''}`)
+    const { ok, data } = await crmFetch(`/api/v1/dealer-portal/leads${qs ? `?${qs}` : ''}`)
+    if (!ok) {
+      console.error('[LeadsPage] failed to load leads:', data.message)
+      setLoadError(data.message ?? 'Could not load leads')
+      setLoading(false)
+      return
+    }
     setLeads(data.leads ?? [])
     setLoading(false)
   }, [statusFilter, search])
@@ -57,6 +65,15 @@ export default function LeadsPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Leads" subtitle="Leads the manufacturer has routed to your dealership, plus any walk-in enquiries you log yourself." />
+
+      {loadError && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile icon={Users} label="Total leads" value={stats.total} />

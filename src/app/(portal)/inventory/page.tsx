@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
+import { Button } from '@/components/ui/Button'
 import ChartCard from '@/components/charts/ChartCard'
 import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
@@ -39,12 +40,20 @@ export default function InventoryPage() {
   const [byStatus, setByStatus] = useState<{ label: string; value: number }[]>([])
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const params = new URLSearchParams({ limit: '100' })
     if (status) params.set('status', status)
-    const { data } = await crmFetch(`/api/v1/dealer-portal/vehicle-units?${params}`)
+    const { ok, data } = await crmFetch(`/api/v1/dealer-portal/vehicle-units?${params}`)
+    if (!ok) {
+      console.error('[InventoryPage] failed to load vehicle units:', data.message)
+      setLoadError(data.message ?? 'Could not load inventory')
+      setLoading(false)
+      return
+    }
     setUnits(data.units ?? [])
     setByStatus(data.byStatus ?? [])
     setLoading(false)
@@ -76,6 +85,15 @@ export default function InventoryPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="My Inventory" subtitle="Vehicle units currently allocated to your dealership by the manufacturer." />
+
+      {loadError && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       {/* Gallery — photo + count only, no card chrome, same treatment as
           the manufacturer's own Vehicle Inventory page. */}

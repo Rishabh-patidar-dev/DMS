@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, FileText, Printer, CheckCircle2, AlertTriangle, PackageMinus, XCircle, MessageSquare } from 'lucide-react'
+import { Loader2, FileText, Printer, CheckCircle2, AlertTriangle, PackageMinus, XCircle, MessageSquare, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader } from '@/components/portal/StatTile'
+import { Button } from '@/components/ui/Button'
 
 type Invoice = {
   id: number
@@ -61,10 +62,18 @@ function printInvoice(inv: Invoice) {
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await crmFetch('/api/v1/dealer-portal/invoices')
+    setLoadError(null)
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/invoices')
+    if (!ok) {
+      console.error('[InvoicesPage] failed to load invoices:', data.message)
+      setLoadError(data.message ?? 'Could not load invoices')
+      setLoading(false)
+      return
+    }
     setInvoices(data.invoices ?? [])
     setLoading(false)
   }, [])
@@ -74,6 +83,15 @@ export default function InvoicesPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Invoices" subtitle="Order confirmations, out-of-stock notices, partial-fulfillment offers, and any other document the manufacturer sends you." />
+
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
         <table className="w-full text-sm">

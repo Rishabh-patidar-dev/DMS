@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Wrench, ClipboardList, CheckCircle2, PackagePlus, X, Paperclip } from 'lucide-react'
+import { Loader2, Plus, Wrench, ClipboardList, CheckCircle2, PackagePlus, X, Paperclip, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -40,16 +40,25 @@ export default function ServicePage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [spareParts, setSpareParts] = useState<SparePart[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const [t, sp] = await Promise.all([
       crmFetch('/api/v1/dealer-portal/service-tickets'),
       crmFetch('/api/v1/dealer-portal/spare-parts-stock'),
     ])
-    setTickets(t.data.tickets ?? [])
-    setSpareParts(sp.data.parts ?? [])
+    const errors: string[] = []
+    if (t.ok) setTickets(t.data.tickets ?? [])
+    else errors.push(t.data.message ?? 'Could not load service tickets')
+    if (sp.ok) setSpareParts(sp.data.parts ?? [])
+    else errors.push(sp.data.message ?? 'Could not load spare-parts stock')
+    if (errors.length) {
+      console.error('[ServicePage] failed to load:', errors)
+      setLoadError(errors.join(' · '))
+    }
     setLoading(false)
   }, [])
 
@@ -62,6 +71,15 @@ export default function ServicePage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Service & Workshop" subtitle="Check a vehicle in with just the vehicle number, name, and issue. Parts get added one by one as the mechanic actually uses them — each one comes straight out of your spare-parts stock." />
+
+      {loadError && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile icon={ClipboardList} label="Total tickets" value={tickets.length} />

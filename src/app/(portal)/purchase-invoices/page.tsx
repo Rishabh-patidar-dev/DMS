@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, Upload, Scan, FileText, IndianRupee, Receipt } from 'lucide-react'
+import { Loader2, Upload, Scan, FileText, IndianRupee, Receipt, RefreshCw } from 'lucide-react'
 import { crmFetch, CRM_API_URL } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -54,10 +54,18 @@ const resolveUrl = (url: string) => (url.startsWith('http') ? url : `${CRM_API_U
 export default function PurchaseInvoicesPage() {
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await crmFetch('/api/v1/dealer-portal/purchase-invoices')
+    setLoadError(null)
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/purchase-invoices')
+    if (!ok) {
+      console.error('[PurchaseInvoicesPage] failed to load invoices:', data.message)
+      setLoadError(data.message ?? 'Could not load purchase invoices')
+      setLoading(false)
+      return
+    }
     setInvoices(data.invoices ?? [])
     setLoading(false)
   }, [])
@@ -70,6 +78,15 @@ export default function PurchaseInvoicesPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Purchase Invoices" subtitle="Log invoices from the OEM or spare-parts suppliers — photograph one and the extracted text is right there to copy from while you fill in the real fields." />
+
+      {loadError && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile icon={Receipt} label="Invoices logged" value={invoices.length} />

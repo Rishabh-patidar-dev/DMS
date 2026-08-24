@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2 } from 'lucide-react'
+import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Button } from '@/components/ui/Button'
@@ -143,17 +143,26 @@ export default function OrdersPage() {
   const [transfers, setTransfers] = useState<StockTransfer[]>([])
   const [spareParts, setSpareParts] = useState<SparePart[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const [t, s] = await Promise.all([
       crmFetch('/api/v1/dealer-portal/stock-transfers'),
       crmFetch('/api/v1/dealer-portal/spare-parts'),
     ])
-    setTransfers(t.data.transfers ?? [])
-    setSpareParts(s.data.spareParts ?? [])
+    const errors: string[] = []
+    if (t.ok) setTransfers(t.data.transfers ?? [])
+    else errors.push(t.data.message ?? 'Could not load vehicle orders')
+    if (s.ok) setSpareParts(s.data.spareParts ?? [])
+    else errors.push(s.data.message ?? 'Could not load spare-part orders')
+    if (errors.length) {
+      console.error('[OrdersPage] failed to load orders:', errors)
+      setLoadError(errors.join(' · '))
+    }
     setLoading(false)
   }, [])
 
@@ -174,6 +183,15 @@ export default function OrdersPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Orders" subtitle="Place vehicle stock and spare-part orders — these land directly in the manufacturer's order desk." />
+
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-white p-1">

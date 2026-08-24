@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Send, Calendar } from 'lucide-react'
+import { Plus, Send, Calendar, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -33,16 +33,25 @@ export default function CampaignListView({ channel, title, subtitle }: { channel
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [segments, setSegments] = useState<Segment[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const [campaignsRes, segmentsRes] = await Promise.all([
       crmFetch(`/api/v1/dealer-portal/campaigns?channel=${channel}`),
       crmFetch('/api/v1/dealer-portal/segments'),
     ])
-    setCampaigns(campaignsRes.data.campaigns ?? [])
-    setSegments(segmentsRes.data.segments ?? [])
+    const errors: string[] = []
+    if (campaignsRes.ok) setCampaigns(campaignsRes.data.campaigns ?? [])
+    else errors.push(campaignsRes.data.message ?? 'Could not load campaigns')
+    if (segmentsRes.ok) setSegments(segmentsRes.data.segments ?? [])
+    else errors.push(segmentsRes.data.message ?? 'Could not load segments')
+    if (errors.length) {
+      console.error('[CampaignListView] failed to load:', errors)
+      setLoadError(errors.join(' · '))
+    }
     setLoading(false)
   }, [channel])
 
@@ -56,6 +65,15 @@ export default function CampaignListView({ channel, title, subtitle }: { channel
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title={title} subtitle={subtitle} />
+
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex justify-end">
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>

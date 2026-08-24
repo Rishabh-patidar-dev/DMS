@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench, Paperclip } from 'lucide-react'
+import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench, Paperclip, RefreshCw } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -109,20 +109,30 @@ export default function BillingPage() {
   const [billable, setBillable] = useState<BillableBooking[]>([])
   const [billableService, setBillableService] = useState<BillableServiceTicket[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState<FormTarget>('none')
   const [statusFilter, setStatusFilter] = useState('')
   const [tab, setTab] = useState<Tab>('vehicle')
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const [b, bb, bs] = await Promise.all([
       crmFetch('/api/v1/dealer-portal/bills'),
       crmFetch('/api/v1/dealer-portal/billable-bookings'),
       crmFetch('/api/v1/dealer-portal/billable-service-tickets'),
     ])
-    setBills(b.data.bills ?? [])
-    setBillable(bb.data.bookings ?? [])
-    setBillableService(bs.data.tickets ?? [])
+    const errors: string[] = []
+    if (b.ok) setBills(b.data.bills ?? [])
+    else errors.push(b.data.message ?? 'Could not load bills')
+    if (bb.ok) setBillable(bb.data.bookings ?? [])
+    else errors.push(bb.data.message ?? 'Could not load bookings awaiting a bill')
+    if (bs.ok) setBillableService(bs.data.tickets ?? [])
+    else errors.push(bs.data.message ?? 'Could not load service tickets awaiting a bill')
+    if (errors.length) {
+      console.error('[BillingPage] failed to load:', errors)
+      setLoadError(errors.join(' · '))
+    }
     setLoading(false)
   }, [])
 
@@ -146,6 +156,15 @@ export default function BillingPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Billing / GST Invoicing" subtitle="GST-compliant sale bills and e-way bills for consignments over ₹50,000 — separated into vehicle sales and workshop servicing, same as Inventory keeps vehicles and spare parts apart." />
+
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-white p-1">
         <button onClick={() => { setTab('vehicle'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicle' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
