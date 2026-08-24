@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -181,14 +181,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // The dealer-info/sign-out block renders as the LAST item inside this same
-  // scrollable nav, not pinned below it — it's not important enough to
-  // permanently reserve bottom-of-sidebar space on every page. It scrolls
-  // out of view with the rest of the list instead. min-h-0 is required on
-  // <nav> — without it, a flex child ignores its parent's height and grows
-  // to fit its content instead, which is what let this content get pushed
-  // below the sidebar's rounded bottom edge before overflow-y-auto was added.
-  const navList = (onNavigate?: () => void, footer?: React.ReactNode) => (
+  // min-h-0 is required on <nav> — without it, a flex child ignores its
+  // parent's height and grows to fit its content instead, which previously
+  // pushed content below the sidebar's rounded bottom edge.
+  const navList = (onNavigate?: () => void) => (
     <nav className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
       {NAV.map((entry) =>
         entry.kind === 'link' ? (
@@ -217,7 +213,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           </div>
         )
       )}
-      {footer}
     </nav>
   )
 
@@ -227,39 +222,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase())
     .join('')
-
-  const desktopFooter = (
-    <div className="mt-3 rounded-xl bg-canvas p-3.5">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
-          {initials || '—'}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-ink">{overview?.dealer.legalName}</p>
-          <p className="truncate font-mono text-[10px] text-ink/55">{overview?.dealer.dealerCode}</p>
-        </div>
-      </div>
-      <button
-        onClick={handleSignOut}
-        disabled={signingOut}
-        className="mt-3 flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-ink/65 transition-colors hover:bg-card hover:text-ink"
-      >
-        <LogOut className="h-3.5 w-3.5" />
-        {signingOut ? 'Signing out…' : 'Sign out'}
-      </button>
-    </div>
-  )
-
-  const mobileFooter = (
-    <div className="mt-3 border-t border-ink/[0.07] pt-4">
-      <p className="truncate text-xs font-semibold text-ink">{overview?.dealer.legalName}</p>
-      <p className="mt-0.5 font-mono text-[11px] text-ink/60">{overview?.dealer.dealerCode}</p>
-      <button onClick={handleSignOut} disabled={signingOut} className="mt-3 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-ink/65 hover:bg-canvas hover:text-ink">
-        <LogOut className="h-3.5 w-3.5" />
-        {signingOut ? 'Signing out…' : 'Sign out'}
-      </button>
-    </div>
-  )
 
   return (
     <div className="min-h-screen bg-page-bg p-2.5 sm:p-4">
@@ -276,7 +238,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {navList(undefined, desktopFooter)}
+          {navList()}
         </aside>
 
         {/* Mobile nav drawer */}
@@ -298,7 +260,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
               <div className="px-2 pb-3"><GlobalSearch /></div>
-              {navList(() => setMobileNavOpen(false), mobileFooter)}
+              {navList(() => setMobileNavOpen(false))}
             </div>
           </div>
         )}
@@ -314,14 +276,15 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                 <Bell className="h-4 w-4" />
               </button>
               <ThemeToggle />
-              <div className="flex items-center gap-2.5 border-l border-ink/[0.08] pl-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
-                  {initials || '—'}
-                </span>
-                <div className="hidden xl:block">
-                  <p className="max-w-[140px] truncate text-xs font-semibold leading-tight text-ink">{overview?.dealer.legalName}</p>
-                  <p className="text-[10px] leading-tight text-ink/55">{overview?.dealer.dealerCode}</p>
-                </div>
+              <div className="border-l border-ink/[0.08] pl-3">
+                <AccountMenu
+                  legalName={overview?.dealer.legalName}
+                  dealerCode={overview?.dealer.dealerCode}
+                  initials={initials}
+                  onSignOut={handleSignOut}
+                  signingOut={signingOut}
+                  showNameInline
+                />
               </div>
             </div>
           </header>
@@ -338,7 +301,13 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle />
-              <button onClick={handleSignOut} className="px-2 text-xs text-ink/60 hover:text-ink">Sign out</button>
+              <AccountMenu
+                legalName={overview?.dealer.legalName}
+                dealerCode={overview?.dealer.dealerCode}
+                initials={initials}
+                onSignOut={handleSignOut}
+                signingOut={signingOut}
+              />
             </div>
           </header>
 
@@ -362,6 +331,89 @@ function PortalNavLink({ href, label, icon: Icon, active, onClick }: NavItem & {
       <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-ink/55'}`} />
       {label}
     </Link>
+  )
+}
+
+// Account avatar in the top bar — click opens the same dealer-info + sign-
+// out card that used to sit permanently pinned at the bottom of the
+// sidebar, same idea as a Google-style account menu: the trigger is always
+// visible, the actual info/actions only take up space when opened.
+function AccountMenu({
+  legalName,
+  dealerCode,
+  initials,
+  onSignOut,
+  signingOut,
+  showNameInline,
+}: {
+  legalName?: string
+  dealerCode?: string
+  initials: string
+  onSignOut: () => void
+  signingOut: boolean
+  showNameInline?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2.5 rounded-full py-0.5 pl-0.5 pr-1 transition-colors hover:bg-canvas"
+        aria-label="Account menu"
+        aria-expanded={open}
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
+          {initials || '—'}
+        </span>
+        {showNameInline && (
+          <div className="hidden text-left xl:block">
+            <p className="max-w-[140px] truncate text-xs font-semibold leading-tight text-ink">{legalName}</p>
+            <p className="text-[10px] leading-tight text-ink/55">{dealerCode}</p>
+          </div>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border border-ink/[0.08] bg-card p-2 shadow-xl">
+          <div className="flex items-center gap-2.5 rounded-xl p-2.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+              {initials || '—'}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-ink">{legalName}</p>
+              <p className="truncate font-mono text-[11px] text-ink/55">{dealerCode}</p>
+            </div>
+          </div>
+          <div className="my-1 border-t border-ink/[0.08]" />
+          <button
+            onClick={onSignOut}
+            disabled={signingOut}
+            className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 text-sm font-medium text-ink/70 transition-colors hover:bg-canvas hover:text-ink"
+          >
+            <LogOut className="h-4 w-4" />
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
