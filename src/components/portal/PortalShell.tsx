@@ -189,7 +189,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   // to fit its content instead, which is what let this content get pushed
   // below the sidebar's rounded bottom edge before overflow-y-auto was added.
   const navList = (onNavigate?: () => void, footer?: React.ReactNode) => (
-    <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
+    <nav className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
       {NAV.map((entry) =>
         entry.kind === 'link' ? (
           <PortalNavLink key={entry.href} {...entry} active={pathname === entry.href} onClick={onNavigate} />

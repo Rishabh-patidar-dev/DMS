@@ -123,6 +123,17 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--slate); }
 
+/* Still scrollable, just no visible track/thumb — used on the sidebar nav,
+   where a scrollbar reads as UI clutter rather than a useful affordance
+   (the list is short enough in practice that the cue isn't needed). */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Chromium Edge */
+}
+
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 .spin-slow { animation: spin-slow 2s linear infinite; }
 
