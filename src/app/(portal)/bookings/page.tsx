@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, ShoppingBag, IndianRupee, CheckCircle2, Car, Paperclip, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, ShoppingBag, IndianRupee, CheckCircle2, Car, Paperclip, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type CatalogItem = { model: string; segment: string }
 type AvailableUnit = { id: number; vin: string; model: string; segment: string; color: string | null; status: string }
@@ -39,11 +41,13 @@ const PAYMENT_MODES = [
 const STATUS_FILTERS = ['BOOKED', 'CONFIRMED', 'ALLOCATED', 'DELIVERED', 'CANCELLED']
 
 export default function BookingsPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -61,10 +65,13 @@ export default function BookingsPage() {
 
   useEffect(() => { load() }, [load])
 
-  const filtered = useMemo(
-    () => statusFilter ? bookings.filter((b) => b.status === statusFilter) : bookings,
-    [bookings, statusFilter]
-  )
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return bookings.filter((b) =>
+      (!statusFilter || b.status === statusFilter) &&
+      (!q || b.bookingNumber.toLowerCase().includes(q) || b.customerName.toLowerCase().includes(q) || b.model.toLowerCase().includes(q) || (b.vehicleUnit?.vin ?? '').toLowerCase().includes(q))
+    )
+  }, [bookings, statusFilter, search])
   const activeCount = bookings.filter((b) => ['BOOKED', 'CONFIRMED', 'ALLOCATED'].includes(b.status)).length
   const deliveredCount = bookings.filter((b) => b.status === 'DELIVERED').length
   const totalCollected = bookings.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.bookingAmount), 0)
@@ -74,12 +81,12 @@ export default function BookingsPage() {
       <PageHeader title="Bookings" subtitle="Every customer booking, from token payment to delivery — allocating a unit and delivering it is the same sale Inventory and Warranty see." />
 
       {loadError && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -89,7 +96,16 @@ export default function BookingsPage() {
         <StatTile icon={IndianRupee} label="Booking amount collected" value={`₹${totalCollected.toLocaleString('en-IN')}`} />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search booking #, customer, model, or VIN…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -108,7 +124,7 @@ export default function BookingsPage() {
         {loading ? (
           <div className="py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-ink/[0.08] bg-white py-10 text-center text-sm text-ink/40">No bookings yet.</div>
+          <Card className="py-10 text-center text-sm text-ink/40">{bookings.length === 0 ? 'No bookings yet.' : 'No bookings match your search.'}</Card>
         ) : filtered.map((b) => (
           <BookingCard key={b.id} booking={b} onChanged={load} />
         ))}
@@ -143,7 +159,7 @@ function BookingCard({ booking, onChanged }: { booking: Booking; onChanged: () =
   }
 
   return (
-    <div className="rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -187,7 +203,7 @@ function BookingCard({ booking, onChanged }: { booking: Booking; onChanged: () =
       {showAttachments && <div className="mt-3"><AttachmentUpload kind="BOOKING" parentId={booking.id} /></div>}
 
       {showAllocate && (
-        <div className="mt-3 rounded-lg border border-ink/[0.08] bg-brand-white p-3">
+        <Card padding="compact" className="mt-3">
           {units.length === 0 ? (
             <p className="text-xs text-ink/50">No available {booking.model} units in your stock right now.</p>
           ) : (
@@ -206,10 +222,10 @@ function BookingCard({ booking, onChanged }: { booking: Booking; onChanged: () =
               <Button size="sm" variant="ghost" onClick={() => setShowAllocate(false)}>Close</Button>
             </div>
           )}
-        </div>
+        </Card>
       )}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-    </div>
+    </Card>
   )
 }
 
@@ -258,7 +274,7 @@ function NewBookingForm({ onDone }: { onDone: () => void }) {
   const valid = customerName && customerPhone && selected && bookingAmount
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card className="mb-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
         <Input label="Customer phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
@@ -274,6 +290,6 @@ function NewBookingForm({ onDone }: { onDone: () => void }) {
       <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
         Create booking
       </Button>
-    </div>
+    </Card>
   )
 }

@@ -1,14 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
+import { Loader2, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import ChartCard from '@/components/charts/ChartCard'
 import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import { VEHICLE_IMAGES } from '@/lib/vehicleCatalog'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type VehicleUnit = {
   id: number
@@ -36,9 +38,11 @@ function daysInStock(u: VehicleUnit): number | null {
 }
 
 export default function InventoryPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [units, setUnits] = useState<VehicleUnit[]>([])
   const [byStatus, setByStatus] = useState<{ label: string; value: number }[]>([])
   const [status, setStatus] = useState('')
+  const [search, setSearch] = useState(deepLinkQ)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -82,17 +86,23 @@ export default function InventoryPage() {
 
   const statuses = ['IN_TRANSIT', 'IN_STOCK', 'ALLOCATED', 'DEMO', 'SOLD', 'SERVICE_HOLD', 'DAMAGED']
 
+  const filteredUnits = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return units
+    return units.filter((u) => u.vin.toLowerCase().includes(q) || u.model.toLowerCase().includes(q))
+  }, [units, search])
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="My Inventory" subtitle="Vehicle units currently allocated to your dealership by the manufacturer." />
 
       {loadError && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       {/* Gallery — photo + count only, no card chrome, same treatment as
@@ -125,18 +135,27 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search VIN or model…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-md border border-ink/10 bg-white px-3 py-2 text-sm text-ink"
+          className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
         >
           <option value="">All statuses</option>
           {statuses.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+      <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -151,10 +170,10 @@ export default function InventoryPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-            ) : units.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">No vehicles allocated to your dealership yet.</td></tr>
+            ) : filteredUnits.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">{units.length === 0 ? 'No vehicles allocated to your dealership yet.' : 'No vehicles match your search.'}</td></tr>
             ) : (
-              units.map((u) => {
+              filteredUnits.map((u) => {
                 const days = daysInStock(u)
                 return (
                   <tr key={u.id} className="border-b border-ink/[0.05] last:border-0">
@@ -176,7 +195,7 @@ export default function InventoryPage() {
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }

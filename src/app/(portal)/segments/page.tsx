@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 const STATUS_OPTIONS = ['OPEN', 'WORKING', 'QUALIFIED', 'UNQUALIFIED', 'NURTURING', 'CONVERTED']
 const SOURCE_OPTIONS = ['IMPORT', 'LANDING_PAGE', 'MANUAL']
@@ -65,12 +66,12 @@ export default function SegmentsPage() {
       />
 
       {loadError && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="mb-4 flex justify-end">
@@ -88,7 +89,7 @@ export default function SegmentsPage() {
           <p className="text-sm text-ink/50">No segments yet — create one to target a campaign.</p>
         ) : (
           segments.map((s) => (
-            <div key={s.id} className="rounded-xl border border-ink/[0.08] bg-white p-4">
+            <Card key={s.id}>
               <div className="mb-2 flex items-start justify-between gap-2">
                 <h2 className="font-semibold text-ink">{s.name}</h2>
                 <button onClick={() => remove(s.id)} className="shrink-0 text-ink/30 hover:text-red-500" title="Delete segment">
@@ -98,9 +99,9 @@ export default function SegmentsPage() {
               {s.description && <p className="mb-2 text-xs text-ink/50">{s.description}</p>}
               <p className="mb-3 text-xs text-ink/50">{filterSummary(s)}</p>
               <div className="flex items-center gap-1.5 text-sm font-medium text-ink">
-                <Users className="h-3.5 w-3.5 text-slate" /> {s.memberCount} leads
+                <Users className="h-3.5 w-3.5 text-accent-dark" /> {s.memberCount} leads
               </div>
-            </div>
+            </Card>
           ))
         )}
       </div>
@@ -133,7 +134,7 @@ function NewSegmentForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mb-6 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card className="mb-6">
       <h3 className="mb-3 text-sm font-semibold text-ink">New segment</h3>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Input placeholder="Segment name" value={name} onChange={(e) => setName(e.target.value)} className="md:col-span-2" />
@@ -146,6 +147,6 @@ function NewSegmentForm({ onDone }: { onDone: () => void }) {
       <Button size="sm" className="mt-3" disabled={!name || saving} loading={saving} onClick={submit}>
         Create segment
       </Button>
-    </div>
+    </Card>
   )
 }

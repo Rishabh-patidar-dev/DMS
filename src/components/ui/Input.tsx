@@ -30,12 +30,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={[
-              'w-full rounded-md px-3 py-2.5 text-sm text-ink',
+              'w-full rounded-xl px-3 py-2.5 text-sm text-ink',
               'bg-brand-white border',
-              'focus:outline-none focus:ring-2 focus:ring-slate/40',
+              'focus:outline-none focus:ring-2 focus:ring-accent/30',
               'transition-colors duration-150',
               'placeholder:text-sand/60',
-              error ? 'border-red-300 bg-red-50/50 focus:ring-red-300' : 'border-ink/10 focus:border-slate/40',
+              error ? 'border-red-300 bg-red-50/50 focus:ring-red-300' : 'border-ink/10 focus:border-accent/50',
               prefix ? 'pl-9' : '',
               suffix ? 'pr-9' : '',
               className,

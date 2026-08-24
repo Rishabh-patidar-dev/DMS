@@ -1,12 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Loader2, Upload, Scan, FileText, IndianRupee, Receipt, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, Upload, Scan, FileText, IndianRupee, Receipt, RefreshCw, Search } from 'lucide-react'
 import { crmFetch, CRM_API_URL } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type PurchaseInvoice = {
   id: number
@@ -52,9 +54,11 @@ const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
 const resolveUrl = (url: string) => (url.startsWith('http') ? url : `${CRM_API_URL}${url}`)
 
 export default function PurchaseInvoicesPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,18 +78,22 @@ export default function PurchaseInvoicesPage() {
 
   const totalAmount = invoices.reduce((sum, i) => sum + Number(i.amount), 0)
   const scannedCount = invoices.filter((i) => i.ocrStatus === 'DONE').length
+  const filteredInvoices = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return invoices.filter((inv) => !q || inv.vendorName.toLowerCase().includes(q) || inv.invoiceNumber.toLowerCase().includes(q))
+  }, [invoices, search])
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Purchase Invoices" subtitle="Log invoices from the OEM or spare-parts suppliers — photograph one and the extracted text is right there to copy from while you fill in the real fields." />
 
       {loadError && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -96,7 +104,19 @@ export default function PurchaseInvoicesPage() {
 
       <LogInvoiceForm onDone={load} />
 
-      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search vendor or invoice #…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+      </div>
+
+      <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -111,9 +131,9 @@ export default function PurchaseInvoicesPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-            ) : invoices.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">No purchase invoices logged yet.</td></tr>
-            ) : invoices.map((inv) => (
+            ) : filteredInvoices.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">{invoices.length === 0 ? 'No purchase invoices logged yet.' : 'No invoices match your search.'}</td></tr>
+            ) : filteredInvoices.map((inv) => (
               <tr key={inv.id} className="border-b border-ink/[0.05] last:border-0">
                 <td className="px-4 py-3 text-ink">{inv.vendorName}</td>
                 <td className="px-4 py-3 font-mono text-xs text-ink/70">{inv.invoiceNumber}</td>
@@ -131,7 +151,7 @@ export default function PurchaseInvoicesPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -198,7 +218,7 @@ function LogInvoiceForm({ onDone }: { onDone: () => void }) {
   const valid = vendorName && invoiceNumber && invoiceDate && amount
 
   return (
-    <div className="mb-6 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card className="mb-6">
       {!preview ? (
         <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink/15 py-10 text-center hover:border-slate/40">
           {uploading ? <Loader2 className="h-6 w-6 animate-spin text-slate" /> : <Upload className="h-6 w-6 text-ink/30" />}
@@ -269,6 +289,6 @@ function LogInvoiceForm({ onDone }: { onDone: () => void }) {
         </div>
       )}
       {previewError && <p className="mt-2 text-xs text-red-500">{previewError}</p>}
-    </div>
+    </Card>
   )
 }

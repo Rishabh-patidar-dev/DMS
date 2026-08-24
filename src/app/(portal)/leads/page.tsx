@@ -7,6 +7,8 @@ import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge, StatTile } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type Lead = {
   id: number
@@ -25,9 +27,10 @@ const ASSIGNMENT_STATUSES = ['ASSIGNED', 'ACCEPTED', 'CONTACTED', 'CONVERTED', '
 
 export default function LeadsPage() {
   const router = useRouter()
+  const deepLinkQ = useDeepLinkQuery()
   const [leads, setLeads] = useState<Lead[]>([])
   const [statusFilter, setStatusFilter] = useState('')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(deepLinkQ)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -84,18 +87,18 @@ export default function LeadsPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, phone…"
-            className="w-full rounded-md border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-slate/40"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-ink/10 bg-white px-3 py-2 text-sm text-ink"
+          className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-xs text-ink/70 focus:outline-none focus:ring-2 focus:ring-accent/30"
         >
           <option value="">All follow-up statuses</option>
           {ASSIGNMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -107,7 +110,7 @@ export default function LeadsPage() {
 
       {showForm && <NewLeadForm onDone={() => { setShowForm(false); load() }} />}
 
-      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+      <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -134,7 +137,7 @@ export default function LeadsPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -161,7 +164,7 @@ function NewLeadForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card className="mb-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
         <Input label="Last name (optional)" value={lastName} onChange={(e) => setLastName(e.target.value)} />
@@ -173,6 +176,6 @@ function NewLeadForm({ onDone }: { onDone: () => void }) {
       <Button size="sm" className="mt-3" disabled={!firstName || !email || saving} loading={saving} onClick={submit}>
         Log lead
       </Button>
-    </div>
+    </Card>
   )
 }

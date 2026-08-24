@@ -1,11 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Loader2, Plus, PackagePlus, IndianRupee, AlertTriangle, Boxes, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, Plus, PackagePlus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type SparePart = {
   id: number
@@ -20,10 +22,12 @@ const LOW_STOCK_THRESHOLD = 5
 const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
 
 export default function SparePartsInventoryPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [parts, setParts] = useState<SparePart[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -45,17 +49,23 @@ export default function SparePartsInventoryPage() {
   const totalValue = parts.reduce((sum, p) => sum + p.quantityOnHand * Number(p.unitPrice), 0)
   const lowStockCount = parts.filter((p) => p.quantityOnHand <= LOW_STOCK_THRESHOLD).length
 
+  const filteredParts = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return parts
+    return parts.filter((p) => p.partName.toLowerCase().includes(q) || (p.partCode ?? '').toLowerCase().includes(q))
+  }, [parts, search])
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Spare Parts" subtitle="Your workshop's own spare-parts stock — this is what gets drawn down every time a mechanic uses a part servicing a vehicle." />
 
       {loadError && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -65,7 +75,16 @@ export default function SparePartsInventoryPage() {
         <StatTile icon={AlertTriangle} label="Low stock" value={lowStockCount} />
       </div>
 
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search part name or code…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4" /> Add / restock part
         </Button>
@@ -73,7 +92,7 @@ export default function SparePartsInventoryPage() {
 
       {showForm && <NewPartForm onDone={() => { setShowForm(false); load() }} />}
 
-      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+      <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -88,14 +107,14 @@ export default function SparePartsInventoryPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-            ) : parts.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">No spare parts on file yet.</td></tr>
-            ) : parts.map((p) => (
+            ) : filteredParts.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">{parts.length === 0 ? 'No spare parts on file yet.' : 'No parts match your search.'}</td></tr>
+            ) : filteredParts.map((p) => (
               <PartRow key={p.id} part={p} onChanged={load} />
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -176,7 +195,7 @@ function NewPartForm({ onDone }: { onDone: () => void }) {
   const valid = partName && Number(quantity) > 0
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card className="mb-4">
       <p className="mb-3 text-xs text-ink/50">Adding a part that already exists tops up its quantity instead of creating a duplicate.</p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Input label="Part name" value={partName} onChange={(e) => setPartName(e.target.value)} required />
@@ -188,6 +207,6 @@ function NewPartForm({ onDone }: { onDone: () => void }) {
       <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
         <PackagePlus className="h-4 w-4" /> Save
       </Button>
-    </div>
+    </Card>
   )
 }

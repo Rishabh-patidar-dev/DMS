@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Wrench, ClipboardList, CheckCircle2, PackagePlus, X, Paperclip, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, Wrench, ClipboardList, CheckCircle2, PackagePlus, X, Paperclip, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type PartUsage = { id: number; partName: string; quantityUsed: number; unitPrice: string; usedAt: string }
 type Ticket = {
@@ -37,11 +39,13 @@ const PRIORITIES = [
 const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
 
 export default function ServicePage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [spareParts, setSpareParts] = useState<SparePart[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -68,17 +72,28 @@ export default function ServicePage() {
   const inProgressCount = tickets.filter((t) => ['IN_PROGRESS', 'AWAITING_PARTS'].includes(t.status)).length
   const resolvedCount = tickets.filter((t) => t.status === 'RESOLVED').length
 
+  const filteredTickets = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return tickets
+    return tickets.filter((t) =>
+      t.ticketNumber.toLowerCase().includes(q) ||
+      t.customerName.toLowerCase().includes(q) ||
+      (t.chassisNumber ?? '').toLowerCase().includes(q) ||
+      (t.vehicleModel ?? '').toLowerCase().includes(q)
+    )
+  }, [tickets, search])
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Service & Workshop" subtitle="Check a vehicle in with just the vehicle number, name, and issue. Parts get added one by one as the mechanic actually uses them — each one comes straight out of your spare-parts stock." />
 
       {loadError && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -88,20 +103,33 @@ export default function ServicePage() {
         <StatTile icon={CheckCircle2} label="Resolved" value={resolvedCount} />
       </div>
 
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search ticket #, customer, vehicle #, or model…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4" /> Check in a vehicle
         </Button>
       </div>
 
-      {showForm && <NewTicketForm onDone={() => { setShowForm(false); load() }} />}
+      {showForm && (
+        <div className="mb-4">
+          <NewTicketForm onDone={() => { setShowForm(false); load() }} />
+        </div>
+      )}
 
       <div className="space-y-3">
         {loading ? (
           <div className="py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></div>
-        ) : tickets.length === 0 ? (
-          <div className="rounded-xl border border-ink/[0.08] bg-white py-10 text-center text-sm text-ink/40">No vehicles checked in yet.</div>
-        ) : tickets.map((t) => (
+        ) : filteredTickets.length === 0 ? (
+          <Card className="py-10 text-center text-sm text-ink/40">{tickets.length === 0 ? 'No vehicles checked in yet.' : 'No tickets match your search.'}</Card>
+        ) : filteredTickets.map((t) => (
           <TicketCard key={t.id} ticket={t} spareParts={spareParts} onChanged={load} />
         ))}
       </div>
@@ -141,7 +169,7 @@ function NewTicketForm({ onDone }: { onDone: () => void }) {
   const valid = customerName && chassisNumber && issue
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card>
       <p className="mb-3 text-xs text-ink/50">Just the essentials at intake — what parts it'll take is figured out once servicing starts.</p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Input label="Vehicle number" value={chassisNumber} onChange={(e) => setChassisNumber(e.target.value)} required />
@@ -164,7 +192,7 @@ function NewTicketForm({ onDone }: { onDone: () => void }) {
       <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
         Check in
       </Button>
-    </div>
+    </Card>
   )
 }
 
@@ -194,7 +222,7 @@ function TicketCard({ ticket, spareParts, onChanged }: { ticket: Ticket; sparePa
   }
 
   return (
-    <div className="rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -237,7 +265,7 @@ function TicketCard({ ticket, spareParts, onChanged }: { ticket: Ticket; sparePa
       )}
       {showAttachments && <div className="mt-3"><AttachmentUpload kind="SERVICE_TICKET" parentId={ticket.id} /></div>}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-    </div>
+    </Card>
   )
 }
 
@@ -272,7 +300,7 @@ function PartsPanel({ ticket, spareParts, canAdd, onChanged }: { ticket: Ticket;
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-ink/[0.08] bg-brand-white p-3">
+    <Card padding="compact" className="mt-3 !bg-canvas">
       {ticket.partsUsed.length > 0 && (
         <div className="mb-3 space-y-1.5">
           {ticket.partsUsed.map((p) => (
@@ -313,6 +341,6 @@ function PartsPanel({ ticket, spareParts, canAdd, onChanged }: { ticket: Ticket;
         <p className="text-xs text-ink/40">No parts used yet.</p>
       ) : null}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-    </div>
+    </Card>
   )
 }

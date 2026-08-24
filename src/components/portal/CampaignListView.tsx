@@ -1,12 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Plus, Send, Calendar, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Plus, Send, Calendar, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 export type CampaignChannel = 'EMAIL' | 'WHATSAPP'
 
@@ -30,11 +32,13 @@ interface Campaign {
 }
 
 export default function CampaignListView({ channel, title, subtitle }: { channel: CampaignChannel; title: string; subtitle: string }) {
+  const deepLinkQ = useDeepLinkQuery()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [segments, setSegments] = useState<Segment[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -62,28 +66,47 @@ export default function CampaignListView({ channel, title, subtitle }: { channel
     await load()
   }
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return campaigns
+    return campaigns.filter((c) => c.name.toLowerCase().includes(q) || (c.subject ?? '').toLowerCase().includes(q))
+  }, [campaigns, search])
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title={title} subtitle={subtitle} />
 
       {loadError && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search campaign name or subject…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4" /> New campaign
         </Button>
       </div>
 
-      {showForm && <NewCampaignForm channel={channel} segments={segments} onDone={() => { setShowForm(false); load() }} />}
+      {showForm && (
+        <div className="mb-4">
+          <NewCampaignForm channel={channel} segments={segments} onDone={() => { setShowForm(false); load() }} />
+        </div>
+      )}
 
-      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+      <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -97,9 +120,9 @@ export default function CampaignListView({ channel, title, subtitle }: { channel
           <tbody>
             {loading ? (
               <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">Loading campaigns…</td></tr>
-            ) : campaigns.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">No campaigns yet.</td></tr>
-            ) : campaigns.map((c) => (
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">{campaigns.length === 0 ? 'No campaigns yet.' : 'No campaigns match your search.'}</td></tr>
+            ) : filtered.map((c) => (
               <tr key={c.id} className="border-b border-ink/[0.05] last:border-0">
                 <td className="px-4 py-3">
                   <div className="font-medium text-ink">{c.name}</div>
@@ -126,7 +149,7 @@ export default function CampaignListView({ channel, title, subtitle }: { channel
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -152,7 +175,7 @@ function NewCampaignForm({ channel, segments, onDone }: { channel: CampaignChann
   }
 
   return (
-    <div className="mb-6 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card>
       <h3 className="mb-3 text-sm font-semibold text-ink">New {channel === 'EMAIL' ? 'email' : 'WhatsApp'} campaign</h3>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Input placeholder="Campaign name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -171,13 +194,13 @@ function NewCampaignForm({ channel, segments, onDone }: { channel: CampaignChann
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={3}
-          className="col-span-2 rounded-md border border-ink/10 bg-brand-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-slate/40 md:col-span-4"
+          className="col-span-2 rounded-xl border border-ink/10 bg-brand-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 md:col-span-4"
         />
       </div>
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
       <Button size="sm" className="mt-3" disabled={!name || !message || saving} loading={saving} onClick={submit}>
         Create campaign
       </Button>
-    </div>
+    </Card>
   )
 }

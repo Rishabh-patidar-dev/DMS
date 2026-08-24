@@ -1,12 +1,14 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useState } from 'react'
-import { Loader2, Plus, Search, CheckCircle2, XCircle, Paperclip, RefreshCw } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, Plus, Search, CheckCircle2, XCircle, Paperclip, RefreshCw, ClipboardList, Clock, Wallet } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
-import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
+import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type Claim = {
   id: number
@@ -19,12 +21,17 @@ type Claim = {
   vehicleUnit: { vin: string; model: string } | null
 }
 
+const UNDER_REVIEW_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'INFO_REQUESTED']
+const APPROVED_STATUSES = ['APPROVED', 'IN_REPAIR']
+
 export default function WarrantyPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -42,18 +49,39 @@ export default function WarrantyPage() {
 
   useEffect(() => { load() }, [load])
 
+  const underReviewCount = useMemo(() => claims.filter((c) => UNDER_REVIEW_STATUSES.includes(c.status)).length, [claims])
+  const approvedCount = useMemo(() => claims.filter((c) => APPROVED_STATUSES.includes(c.status)).length, [claims])
+  const reimbursedCount = useMemo(() => claims.filter((c) => c.status === 'REIMBURSED').length, [claims])
+
+  const filteredClaims = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return claims
+    return claims.filter((c) =>
+      c.claimNumber.toLowerCase().includes(q) ||
+      c.customerName.toLowerCase().includes(q) ||
+      (c.vehicleUnit?.vin ?? '').toLowerCase().includes(q)
+    )
+  }, [claims, search])
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <PageHeader title="Warranty Claims" subtitle="Check coverage on a VIN and raise a claim — it's adjudicated automatically and lands in the manufacturer's Claims & Coverage queue." />
 
       {loadError && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile icon={ClipboardList} label="Total claims" value={claims.length} />
+        <StatTile icon={Clock} label="Under review" value={underReviewCount} />
+        <StatTile icon={CheckCircle2} label="Approved" value={approvedCount} />
+        <StatTile icon={Wallet} label="Reimbursed" value={reimbursedCount} />
+      </div>
 
       <div className="mb-4 flex justify-end">
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
@@ -61,9 +89,23 @@ export default function WarrantyPage() {
         </Button>
       </div>
 
-      {showForm && <NewClaimForm onDone={() => { setShowForm(false); load() }} />}
+      {showForm && (
+        <div className="mb-4">
+          <NewClaimForm onDone={() => { setShowForm(false); load() }} />
+        </div>
+      )}
 
-      <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+      <div className="mb-4 relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search claim #, customer, or VIN…"
+          className="w-full max-w-sm rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+        />
+      </div>
+
+      <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -78,9 +120,9 @@ export default function WarrantyPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-            ) : claims.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">No warranty claims raised yet.</td></tr>
-            ) : claims.map((c) => (
+            ) : filteredClaims.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">{claims.length === 0 ? 'No warranty claims raised yet.' : 'No claims match your search.'}</td></tr>
+            ) : filteredClaims.map((c) => (
               <Fragment key={c.id}>
                 <tr className="border-b border-ink/[0.05] last:border-0">
                   <td className="px-4 py-3 font-mono text-xs text-ink">{c.claimNumber}</td>
@@ -105,7 +147,7 @@ export default function WarrantyPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -153,16 +195,16 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
 
   if (result) {
     return (
-      <div className="mb-4 rounded-xl border border-slate/30 bg-slate/5 p-4 text-sm">
+      <Card className="!bg-slate/5 text-sm">
         <p className="font-medium text-ink">Claim {result.claimNumber} submitted — auto-adjudicated to <b>{result.status.replace(/_/g, ' ')}</b>.</p>
         <p className="mt-1 text-xs text-ink/60">{result.adjudication?.reasons?.join(' ')}</p>
         <button onClick={onDone} className="mt-3 rounded-md border border-ink/10 px-3 py-1.5 text-xs text-ink/70 hover:bg-sand/10">Done</button>
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card>
       <div className="mb-4 flex gap-2">
         <Input placeholder="Enter the vehicle's VIN…" value={vin} onChange={(e) => setVin(e.target.value)} prefix={<Search className="h-4 w-4" />} />
         <Button size="sm" onClick={checkCoverage} loading={checking}>Check coverage</Button>
@@ -207,6 +249,6 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
       <Button size="sm" className="mt-3" disabled={!customerName || !issueDescription || saving} loading={saving} onClick={submit}>
         Submit claim (auto-adjudicated)
       </Button>
-    </div>
+    </Card>
   )
 }

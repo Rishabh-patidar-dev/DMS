@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, Car, Package, AlertTriangle, CalendarClock, Printer, CheckCircle2, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatusBadge } from '@/components/portal/StatTile'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { VehicleOrderForm, SparePartOrderForm } from '@/components/portal/OrderForms'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type StockNotice = {
   status: 'OPEN' | 'SENT' | 'RESOLVED'
@@ -139,6 +141,7 @@ function ConfirmedNote() {
 const STATUS_OPTIONS = ['REQUESTED', 'APPROVED', 'DISPATCHED', 'DELIVERED', 'Close', 'REJECTED', 'CANCELLED']
 
 export default function OrdersPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [tab, setTab] = useState<'vehicles' | 'parts'>('vehicles')
   const [transfers, setTransfers] = useState<StockTransfer[]>([])
   const [spareParts, setSpareParts] = useState<SparePart[]>([])
@@ -146,6 +149,7 @@ export default function OrdersPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -155,27 +159,41 @@ export default function OrdersPage() {
       crmFetch('/api/v1/dealer-portal/spare-parts'),
     ])
     const errors: string[] = []
-    if (t.ok) setTransfers(t.data.transfers ?? [])
+    const nextTransfers: StockTransfer[] = t.ok ? t.data.transfers ?? [] : []
+    const nextSpareParts: SparePart[] = s.ok ? s.data.spareParts ?? [] : []
+    if (t.ok) setTransfers(nextTransfers)
     else errors.push(t.data.message ?? 'Could not load vehicle orders')
-    if (s.ok) setSpareParts(s.data.spareParts ?? [])
+    if (s.ok) setSpareParts(nextSpareParts)
     else errors.push(s.data.message ?? 'Could not load spare-part orders')
     if (errors.length) {
       console.error('[OrdersPage] failed to load orders:', errors)
       setLoadError(errors.join(' · '))
     }
+    // A GlobalSearch deep link doesn't know which tab its match lives on —
+    // if the term only shows up in spare parts, jump the tab there so the
+    // result is actually visible instead of landing on an empty vehicles list.
+    if (deepLinkQ && !nextTransfers.some((x) => x.requestNumber === deepLinkQ) && nextSpareParts.some((x) => x.requestNumber === deepLinkQ)) {
+      setTab('parts')
+    }
     setLoading(false)
-  }, [])
+  }, [deepLinkQ])
 
   useEffect(() => { load() }, [load])
 
-  const filteredTransfers = useMemo(
-    () => statusFilter ? transfers.filter((t) => t.status === statusFilter) : transfers,
-    [transfers, statusFilter]
-  )
-  const filteredSpareParts = useMemo(
-    () => statusFilter ? spareParts.filter((s) => s.status === statusFilter) : spareParts,
-    [spareParts, statusFilter]
-  )
+  const filteredTransfers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return transfers.filter((t) =>
+      (!statusFilter || t.status === statusFilter) &&
+      (!q || t.requestNumber.toLowerCase().includes(q) || t.model.toLowerCase().includes(q))
+    )
+  }, [transfers, statusFilter, search])
+  const filteredSpareParts = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return spareParts.filter((s) =>
+      (!statusFilter || s.status === statusFilter) &&
+      (!q || s.requestNumber.toLowerCase().includes(q) || s.partName.toLowerCase().includes(q) || (s.partCode ?? '').toLowerCase().includes(q))
+    )
+  }, [spareParts, statusFilter, search])
   const openCount = tab === 'vehicles'
     ? transfers.filter((t) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'Close'].includes(t.status)).length
     : spareParts.filter((s) => ['REQUESTED', 'APPROVED', 'DISPATCHED', 'Close'].includes(s.status)).length
@@ -185,48 +203,60 @@ export default function OrdersPage() {
       <PageHeader title="Orders" subtitle="Place vehicle stock and spare-part orders — these land directly in the manufacturer's order desk." />
 
       {loadError && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-white p-1">
-          <button onClick={() => { setTab('vehicles'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicles' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+        <div className="flex items-center gap-1 rounded-xl bg-white p-1">
+          <button onClick={() => { setTab('vehicles'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicles' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
             <Car className="h-3.5 w-3.5" /> Vehicles
-            <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{transfers.length}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === 'vehicles' ? 'bg-white/20' : 'bg-ink/[0.06] text-ink/50'}`}>{transfers.length}</span>
           </button>
-          <button onClick={() => { setTab('parts'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'parts' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+          <button onClick={() => { setTab('parts'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'parts' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
             <Package className="h-3.5 w-3.5" /> Spare parts
-            <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{spareParts.length}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === 'parts' ? 'bg-white/20' : 'bg-ink/[0.06] text-ink/50'}`}>{spareParts.length}</span>
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-ink/[0.08] bg-white px-3 py-2 text-xs text-ink/70"
-          >
-            <option value="">All statuses ({openCount} open)</option>
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-            <Plus className="h-4 w-4" /> New order
-          </Button>
+        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+          <Plus className="h-4 w-4" /> New order
+        </Button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search order #, model, or part…"
+            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-xs text-ink/70 focus:outline-none focus:ring-2 focus:ring-accent/30"
+        >
+          <option value="">All statuses ({openCount} open)</option>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
 
       {showForm && (
-        tab === 'vehicles'
-          ? <VehicleOrderForm onDone={() => { setShowForm(false); load() }} />
-          : <SparePartOrderForm onDone={() => { setShowForm(false); load() }} />
+        <div className="mb-4">
+          {tab === 'vehicles'
+            ? <VehicleOrderForm onDone={() => { setShowForm(false); load() }} />
+            : <SparePartOrderForm onDone={() => { setShowForm(false); load() }} />}
+        </div>
       )}
 
       {tab === 'vehicles' ? (
-        <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+        <Card padding="compact" className="overflow-hidden !p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -240,9 +270,9 @@ export default function OrdersPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-              ) : transfers.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">No vehicle orders placed yet.</td></tr>
-              ) : transfers.map((t) => (
+              ) : filteredTransfers.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">{transfers.length === 0 ? 'No vehicle orders placed yet.' : 'No orders match your search.'}</td></tr>
+              ) : filteredTransfers.map((t) => (
                 <tr key={t.id} className="border-b border-ink/[0.05] last:border-0">
                   <td className="px-4 py-3 font-mono text-xs text-ink align-top">{t.requestNumber}</td>
                   <td className="px-4 py-3 text-ink align-top">{t.model}</td>
@@ -259,9 +289,9 @@ export default function OrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+        <Card padding="compact" className="overflow-hidden !p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ink/[0.07] text-left text-ink/50">
@@ -275,9 +305,9 @@ export default function OrdersPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-              ) : spareParts.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">No spare-part orders placed yet.</td></tr>
-              ) : spareParts.map((s) => (
+              ) : filteredSpareParts.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-ink/40">{spareParts.length === 0 ? 'No spare-part orders placed yet.' : 'No orders match your search.'}</td></tr>
+              ) : filteredSpareParts.map((s) => (
                 <tr key={s.id} className="border-b border-ink/[0.05] last:border-0">
                   <td className="px-4 py-3 font-mono text-xs text-ink align-top">{s.requestNumber}</td>
                   <td className="px-4 py-3 text-ink align-top">{s.partName}</td>
@@ -294,7 +324,7 @@ export default function OrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   )

@@ -153,7 +153,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#E7EAE6]">
         <Loader2 className="h-5 w-5 animate-spin text-ink/40" />
       </div>
     )
@@ -161,8 +161,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   if (state === 'unreachable') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-white p-8">
-        <div className="max-w-md rounded-2xl border border-ink/[0.08] bg-white p-8 text-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#E7EAE6] p-8">
+        <div className="max-w-md rounded-2xl bg-white p-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
             <WifiOff className="h-5 w-5 text-red-500" />
           </div>
@@ -172,7 +172,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             isn&rsquo;t allowing requests from this site yet. Try reloading — if it keeps happening,
             this needs an admin to check the environment configuration.
           </p>
-          <button onClick={() => window.location.reload()} className="mt-5 text-sm font-medium text-slate hover:underline">
+          <button onClick={() => window.location.reload()} className="mt-5 text-sm font-medium text-accent-dark hover:underline">
             Reload
           </button>
         </div>

@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench, Paperclip, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, Receipt, IndianRupee, CheckCircle2, AlertCircle, FileText, Truck, Car, Wrench, Paperclip, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type BillableBooking = {
   id: number
@@ -105,6 +107,7 @@ type FormTarget = 'none' | { kind: 'manual-vehicle' } | { kind: 'manual-service'
 type Tab = 'vehicle' | 'service'
 
 export default function BillingPage() {
+  const deepLinkQ = useDeepLinkQuery()
   const [bills, setBills] = useState<Bill[]>([])
   const [billable, setBillable] = useState<BillableBooking[]>([])
   const [billableService, setBillableService] = useState<BillableServiceTicket[]>([])
@@ -112,6 +115,7 @@ export default function BillingPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState<FormTarget>('none')
   const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState(deepLinkQ)
   const [tab, setTab] = useState<Tab>('vehicle')
 
   const load = useCallback(async () => {
@@ -141,10 +145,13 @@ export default function BillingPage() {
   const vehicleBills = useMemo(() => bills.filter((b) => b.billType === 'VEHICLE_SALE'), [bills])
   const serviceBills = useMemo(() => bills.filter((b) => b.billType === 'SERVICE'), [bills])
   const tabBills = tab === 'vehicle' ? vehicleBills : serviceBills
-  const filtered = useMemo(
-    () => statusFilter ? tabBills.filter((b) => b.status === statusFilter) : tabBills,
-    [tabBills, statusFilter]
-  )
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return tabBills.filter((b) =>
+      (!statusFilter || b.status === statusFilter) &&
+      (!q || b.billNumber.toLowerCase().includes(q) || b.customerName.toLowerCase().includes(q) || b.model.toLowerCase().includes(q) || (b.vin ?? '').toLowerCase().includes(q))
+    )
+  }, [tabBills, statusFilter, search])
   const totalBilled = tabBills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.totalAmount), 0)
   const totalCollected = tabBills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.amountPaid), 0)
   const outstanding = totalBilled - totalCollected
@@ -158,22 +165,22 @@ export default function BillingPage() {
       <PageHeader title="Billing / GST Invoicing" subtitle="GST-compliant sale bills and e-way bills for consignments over ₹50,000 — separated into vehicle sales and workshop servicing, same as Inventory keeps vehicles and spare parts apart." />
 
       {loadError && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
           <span>{loadError}</span>
           <Button size="sm" variant="outline" onClick={load}>
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
-        </div>
+        </Card>
       )}
 
-      <div className="mb-4 flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-white p-1">
-        <button onClick={() => { setTab('vehicle'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicle' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+      <div className="mb-4 flex items-center gap-1 rounded-xl bg-white p-1">
+        <button onClick={() => { setTab('vehicle'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicle' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
           <Car className="h-3.5 w-3.5" /> Vehicle Billing
-          <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{vehicleBills.length}</span>
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === 'vehicle' ? 'bg-white/20' : 'bg-ink/[0.06] text-ink/50'}`}>{vehicleBills.length}</span>
         </button>
-        <button onClick={() => { setTab('service'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'service' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+        <button onClick={() => { setTab('service'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'service' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
           <Wrench className="h-3.5 w-3.5" /> Service Billing
-          <span className="rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-ink/50">{serviceBills.length}</span>
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === 'service' ? 'bg-white/20' : 'bg-ink/[0.06] text-ink/50'}`}>{serviceBills.length}</span>
         </button>
       </div>
 
@@ -185,11 +192,11 @@ export default function BillingPage() {
       </div>
 
       {tab === 'vehicle' && billable.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
           <h3 className="mb-3 text-sm font-semibold text-ink">Delivered bookings awaiting a bill</h3>
           <div className="space-y-2">
             {billable.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm">
+              <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-sm">
                 <div>
                   <span className="font-mono text-xs text-ink/50">{b.bookingNumber}</span>
                   <span className="ml-2 font-medium text-ink">{b.customerName}</span>
@@ -203,11 +210,11 @@ export default function BillingPage() {
       )}
 
       {tab === 'service' && billableService.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
           <h3 className="mb-3 text-sm font-semibold text-ink">Resolved service tickets awaiting a bill</h3>
           <div className="space-y-2">
             {billableService.map((t) => (
-              <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm">
+              <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-sm">
                 <div>
                   <span className="font-mono text-xs text-ink/50">{t.ticketNumber}</span>
                   <span className="ml-2 font-medium text-ink">{t.customerName}</span>
@@ -221,13 +228,24 @@ export default function BillingPage() {
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          options={STATUS_FILTERS.map((s) => ({ value: s, label: s.replace(/_/g, ' ') }))}
-          placeholder="All statuses"
-          className="w-52"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-56">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search bill #, customer, model, VIN…"
+              className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={STATUS_FILTERS.map((s) => ({ value: s, label: s.replace(/_/g, ' ') }))}
+            placeholder="All statuses"
+            className="w-52"
+          />
+        </div>
         <Button
           size="sm"
           variant="outline"
@@ -251,7 +269,7 @@ export default function BillingPage() {
         {loading ? (
           <div className="py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-ink/[0.08] bg-white py-10 text-center text-sm text-ink/40">No {tab === 'vehicle' ? 'vehicle sale' : 'service'} bills issued yet.</div>
+          <Card className="py-10 text-center text-sm text-ink/40">{tabBills.length === 0 ? `No ${tab === 'vehicle' ? 'vehicle sale' : 'service'} bills issued yet.` : 'No bills match your search.'}</Card>
         ) : filtered.map((bill) => (
           <BillCard key={bill.id} bill={bill} onChanged={load} />
         ))}
@@ -292,7 +310,7 @@ function BillCard({ bill, onChanged }: { bill: Bill; onChanged: () => void }) {
   }
 
   return (
-    <div className="rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -341,20 +359,20 @@ function BillCard({ bill, onChanged }: { bill: Bill; onChanged: () => void }) {
       {showAttachments && <div className="mt-3"><AttachmentUpload kind="CUSTOMER_BILL" parentId={bill.id} /></div>}
 
       {showPay && (
-        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-ink/[0.08] bg-brand-white p-3">
+        <Card padding="compact" className="mt-3 flex flex-wrap items-end gap-2">
           <Input label={`Amount received (balance ${money(balance)})`} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-56" />
           <Button size="sm" disabled={!amount || busy} loading={busy} onClick={pay}>Save payment</Button>
           <Button size="sm" variant="ghost" onClick={() => setShowPay(false)}>Close</Button>
-        </div>
+        </Card>
       )}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-    </div>
+    </Card>
   )
 }
 
 function GstInvoiceDetail({ bill }: { bill: Bill }) {
   return (
-    <div className="mt-3 rounded-lg border border-ink/[0.08] bg-brand-white p-4 text-sm">
+    <Card padding="compact" className="mt-3 text-sm">
       <div className="mb-3 flex flex-wrap justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Bill to</p>
@@ -397,7 +415,7 @@ function GstInvoiceDetail({ bill }: { bill: Bill }) {
         )}
         <div className="flex justify-between border-t border-ink/[0.08] pt-1 text-base font-semibold text-ink"><span>Total</span><span>{money(bill.totalAmount)}</span></div>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -435,7 +453,7 @@ function EwayBillPanel({ bill, onChanged }: { bill: Bill; onChanged: () => void 
   if (bill.ewayBill) {
     const eb = bill.ewayBill
     return (
-      <div className="mt-3 rounded-lg border border-ink/[0.08] bg-brand-white p-3 text-sm">
+      <Card padding="compact" className="mt-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="font-mono text-xs text-ink/50">{eb.ewayBillNumber}</p>
@@ -447,12 +465,12 @@ function EwayBillPanel({ bill, onChanged }: { bill: Bill; onChanged: () => void 
         <p className="mt-0.5 text-xs text-ink/50">Valid until {new Date(eb.validUntil).toLocaleString()}</p>
         {eb.cancellationReason && <p className="mt-1 text-xs text-red-500">{eb.cancellationReason}</p>}
         {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-ink/[0.08] bg-brand-white p-3">
+    <Card padding="compact" className="mt-3">
       <p className="mb-2 text-xs text-ink/50">Taxable value {money(bill.taxableAmount)} exceeds ₹{EWAY_BILL_THRESHOLD.toLocaleString('en-IN')} — an e-way bill is required for transport.</p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Input label="Transporter name" value={transporterName} onChange={(e) => setTransporterName(e.target.value)} required />
@@ -465,7 +483,7 @@ function EwayBillPanel({ bill, onChanged }: { bill: Bill; onChanged: () => void 
       <Button size="sm" className="mt-3" disabled={!transporterName || !vehicleNumber || !distanceKm || busy} loading={busy} onClick={generate}>
         Generate e-way bill
       </Button>
-    </div>
+    </Card>
   )
 }
 
@@ -537,14 +555,14 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
     : (!!exShowroomPrice && (booking || (customerName && customerPhone && model)))
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <Card className="mb-4">
       {booking ? (
         <p className="mb-3 text-sm text-ink/70">Billing <span className="font-medium text-ink">{booking.customerName}</span> for {booking.model}{booking.vehicleUnit ? ` (${booking.vehicleUnit.vin})` : ''} — booking {booking.bookingNumber}</p>
       ) : serviceTicket ? (
         <div className="mb-3">
           <p className="text-sm text-ink/70">Billing <span className="font-medium text-ink">{serviceTicket.customerName}</span> for {serviceTicket.chassisNumber} — ticket {serviceTicket.ticketNumber}</p>
           {serviceTicket.partsUsed.length > 0 && (
-            <ul className="mt-2 space-y-0.5 rounded-lg bg-brand-white p-2 text-xs text-ink/60">
+            <ul className="mt-2 space-y-0.5 rounded-xl bg-canvas p-2.5 text-xs text-ink/60">
               {serviceTicket.partsUsed.map((p) => (
                 <li key={p.id} className="flex justify-between"><span>{p.partName} × {p.quantityUsed}</span><span>{money(Number(p.unitPrice) * p.quantityUsed)}</span></li>
               ))}
@@ -582,18 +600,18 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
         <Input label="Address (optional)" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
       </div>
 
-      <div className="mt-3 rounded-lg bg-brand-white p-3 text-sm">
+      <Card padding="compact" className="mt-3 text-sm">
         {isService && partsAmount > 0 && <div className="flex justify-between text-ink/60"><span>Spare parts used</span><span>{money(partsAmount)}</span></div>}
         <div className="flex justify-between text-ink/60"><span>Taxable amount</span><span>{money(taxable)}</span></div>
         <div className="flex justify-between text-ink/60"><span>GST ({gstRate || 0}%)</span><span>{money(gst)}</span></div>
         <div className="mt-1 flex justify-between border-t border-ink/[0.08] pt-1 font-semibold text-ink"><span>Total</span><span>{money(total)}</span></div>
-      </div>
+      </Card>
 
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
       <div className="mt-3 flex gap-2">
         <Button size="sm" disabled={!valid || saving} loading={saving} onClick={submit}>Issue bill</Button>
         <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
       </div>
-    </div>
+    </Card>
   )
 }
