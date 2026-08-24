@@ -2,12 +2,12 @@ import { LucideIcon } from 'lucide-react'
 
 export function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-ink/[0.08] bg-white px-4 py-3">
-      <div className="mb-1 flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 shrink-0 text-slate" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">{label}</span>
+    <div className="rounded-2xl bg-white px-4 py-3.5">
+      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-accent-tint">
+        <Icon className="h-4 w-4 shrink-0 text-accent-dark" />
       </div>
-      <p className="text-xl font-semibold text-ink">{value}</p>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">{label}</span>
+      <p className="mt-0.5 text-xl font-semibold text-ink">{value}</p>
     </div>
   )
 }
@@ -16,7 +16,7 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
   return (
     <div className="mb-6">
       <h1 className="text-xl font-semibold text-ink">{title}</h1>
-      {subtitle && <p className="mt-1 text-sm text-ink/60">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-sm text-ink/50">{subtitle}</p>}
     </div>
   )
 }

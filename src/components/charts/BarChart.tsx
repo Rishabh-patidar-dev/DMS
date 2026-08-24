@@ -7,7 +7,7 @@ export interface BarDatum {
   value: number
 }
 
-export default function BarChart({ data, color = 'var(--viz-1)' }: { data: BarDatum[]; color?: string }) {
+export default function BarChart({ data, color = 'var(--accent)' }: { data: BarDatum[]; color?: string }) {
   const [hovered, setHovered] = useState<number | null>(null)
   const max = Math.max(1, ...data.map((d) => d.value))
 

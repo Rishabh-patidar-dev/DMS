@@ -10,17 +10,30 @@
 :root {
   --ink: #051F20;    /* darkest — headings, primary text */
   --slate: #235347;  /* mid-dark green — links, icon glyphs, secondary accent text (AA+ on both white text and the light canvas) */
-  --stone: #8EB69B;  /* light sage — primary buttons/badges/large accents (dark ink text reads clearly on it) */
+  --stone: #8EB69B;  /* light sage — secondary/quiet accents (dark ink text reads clearly on it) */
   --sand: #163832;   /* muted secondary text/borders, used mostly at reduced opacity */
   --ink2: #0B2B26;   /* deepest surface */
   --white: #F5FAF7;  /* page canvas — a near-white, barely-tinted sage; the full mint (#DAF1DE) reads too saturated across a whole viewport, so it's used selectively instead (badge chips, login split-panel) */
   --mint: #DAF1DE;   /* the lightest palette swatch, used as an accent tint, not the base canvas */
 
+  /* Dashboard redesign (2026-08): a punchier, more saturated primary green
+     sits between --slate (dark) and --stone (pale) — this is what the
+     wallet-style KPI cards, chart bars, status pills and the sidebar's
+     active state render in, so the whole portal reads as one confident
+     green rather than the previous muted-sage buttons next to plain white
+     cards. --canvas is the light gray the redesign's cards float on (the
+     old --white was already close to this but slightly green-tinted; kept
+     both since --white still backs the login split-panel/badge chips). */
+  --accent: #16A34A;
+  --accent-dark: #0F7A38;
+  --accent-tint: #E7F6EC;
+  --canvas: #F1F3F1;
+
   /* Categorical chart palette — greens from the brand scale plus a few
      coordinating hues for series that need to read as distinct categories,
      not a gradient (dataviz convention: never reuse one hue as identity). */
-  --viz-1: #235347;
-  --viz-2: #8EB69B;
+  --viz-1: #16A34A;
+  --viz-2: #235347;
   --viz-3: #2a6fdb;
   --viz-4: #b9790a;
   --viz-5: #6d4aed;
@@ -35,6 +48,10 @@
   --color-ink2: var(--ink2);
   --color-brand-white: var(--white);
   --color-mint: var(--mint);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-tint: var(--accent-tint);
+  --color-canvas: var(--canvas);
   --color-background: var(--ink2);
   --color-foreground: var(--white);
   --font-sans: var(--font-inter);
