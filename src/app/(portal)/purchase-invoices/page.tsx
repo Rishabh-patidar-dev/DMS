@@ -25,6 +25,13 @@ type PurchaseInvoice = {
   createdAt: string
 }
 
+type SuggestedFields = {
+  vendorName?: string
+  vendorGstin?: string
+  invoiceNumber?: string
+  invoiceDate?: string
+  amount?: string
+}
 type OcrPreview = {
   fileUrl: string
   storagePath: string
@@ -32,6 +39,7 @@ type OcrPreview = {
   mimeType: string
   ocrExtractedText: string | null
   ocrStatus: 'DONE' | 'FAILED' | 'SKIPPED'
+  suggested?: SuggestedFields
 }
 
 const CATEGORIES = [
@@ -138,7 +146,18 @@ function LogInvoiceForm({ onDone }: { onDone: () => void }) {
     setUploading(false)
     if (!ok) { setPreviewError(data.message ?? 'Could not upload file'); return }
     setPreview(data)
+    // Best-effort guesses from the scan — pre-fill but leave every field
+    // fully editable, since a heuristic reading a real invoice (especially
+    // one with a customer name on it too) can genuinely get one wrong.
+    const s: SuggestedFields = data.suggested ?? {}
+    if (s.vendorName) setVendorName(s.vendorName)
+    if (s.vendorGstin) setVendorGstin(s.vendorGstin)
+    if (s.invoiceNumber) setInvoiceNumber(s.invoiceNumber)
+    if (s.invoiceDate) setInvoiceDate(s.invoiceDate)
+    if (s.amount) setAmount(s.amount)
   }
+
+  const hasSuggestions = !!(preview?.suggested && Object.values(preview.suggested).some(Boolean))
 
   const submit = async () => {
     if (!preview) return
@@ -167,7 +186,7 @@ function LogInvoiceForm({ onDone }: { onDone: () => void }) {
         <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink/15 py-10 text-center hover:border-slate/40">
           {uploading ? <Loader2 className="h-6 w-6 animate-spin text-slate" /> : <Upload className="h-6 w-6 text-ink/30" />}
           <span className="text-sm font-medium text-ink/70">{uploading ? 'Uploading & scanning…' : 'Upload an invoice photo or PDF'}</span>
-          <span className="text-xs text-ink/40">JPG/PNG photos get OCR'd automatically — the extracted text shows up below to copy from</span>
+          <span className="text-xs text-ink/40">JPG/PNG photos get OCR'd automatically and the fields below get a best-effort pre-fill — always double-check before saving</span>
           <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" disabled={uploading} onChange={(e) => handleFile(e.target.files)} />
         </label>
       ) : (
@@ -198,6 +217,12 @@ function LogInvoiceForm({ onDone }: { onDone: () => void }) {
             </div>
           </div>
 
+          {hasSuggestions && (
+            <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <Scan className="h-3.5 w-3.5 shrink-0" /> Pre-filled from the scan — this is a best-effort read, please check each field against the photo before saving.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             <Input label="Vendor name" value={vendorName} onChange={(e) => setVendorName(e.target.value)} required />
             <Input label="Vendor GSTIN (optional)" value={vendorGstin} onChange={(e) => setVendorGstin(e.target.value)} />
@@ -213,7 +238,16 @@ function LogInvoiceForm({ onDone }: { onDone: () => void }) {
           {saveError && <p className="mt-2 text-xs text-red-500">{saveError}</p>}
           <div className="mt-3 flex gap-2">
             <Button size="sm" disabled={!valid || saving} loading={saving} onClick={submit}>Save invoice</Button>
-            <Button size="sm" variant="ghost" onClick={() => setPreview(null)}>Start over</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setPreview(null)
+                setVendorName(''); setVendorGstin(''); setInvoiceNumber(''); setInvoiceDate(''); setAmount(''); setCategory('OTHER'); setNotes('')
+              }}
+            >
+              Start over
+            </Button>
           </div>
         </div>
       )}
