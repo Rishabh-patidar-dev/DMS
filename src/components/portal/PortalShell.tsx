@@ -182,7 +182,12 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   }
 
   const navList = (onNavigate?: () => void) => (
-    <nav className="flex-1 space-y-0.5 px-3">
+    // min-h-0 is required here — without it, a flex child ignores its
+    // parent's height and grows to fit its content instead, which is what
+    // let the dealer footer card get pushed below the sidebar's rounded
+    // bottom edge once enough groups were expanded to overflow. overflow-y
+    // -auto then scrolls the nav internally instead of overflowing the card.
+    <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
       {NAV.map((entry) =>
         entry.kind === 'link' ? (
           <PortalNavLink key={entry.href} {...entry} active={pathname === entry.href} onClick={onNavigate} />
@@ -223,7 +228,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-page-bg p-2.5 sm:p-4">
       <div className="flex h-[calc(100vh-1.25rem)] gap-4 sm:h-[calc(100vh-2rem)]">
-        <aside className="hidden w-64 shrink-0 flex-col rounded-2xl bg-card p-4 lg:flex">
+        <aside className="hidden min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-2xl bg-card p-4 lg:flex">
           <div className="flex items-center gap-2.5 px-1.5 pb-5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-tint">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -262,7 +267,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         {mobileNavOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="absolute inset-0 bg-black/30" onClick={() => setMobileNavOpen(false)} />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-card shadow-xl">
+            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] min-h-0 flex-col overflow-hidden bg-card shadow-xl">
               <div className="flex items-center justify-between px-5 py-5">
                 <div className="flex items-center gap-2.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
