@@ -1,25 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight, Users, TrendingUp } from 'lucide-react'
+import { Car, ClipboardList, ShieldCheck, Wrench, Loader2, ArrowRight, Users, TrendingUp, PackagePlus, Truck, Package } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import ChartCard from '@/components/charts/ChartCard'
 import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import type { Overview } from '@/components/portal/PortalShell'
+import { VehicleOrderForm, SparePartOrderForm } from '@/components/portal/OrderForms'
+import { Button } from '@/components/ui/Button'
 
 export default function OverviewPage() {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showOrderForm, setShowOrderForm] = useState(false)
+  const [orderTab, setOrderTab] = useState<'vehicles' | 'parts'>('vehicles')
 
-  useEffect(() => {
+  const load = useCallback(() => {
     crmFetch('/api/v1/dealer-portal/overview').then(({ data }) => {
       setOverview(data)
       setLoading(false)
     })
   }, [])
+
+  useEffect(() => { load() }, [load])
 
   const quickLinks = [
     { href: '/leads', label: 'Follow up on leads', icon: Users },
@@ -35,6 +41,43 @@ export default function OverviewPage() {
         title={`Welcome back${overview ? `, ${overview.dealer.legalName}` : ''}`}
         subtitle="Everything you place here reaches the manufacturer instantly — orders, stock, and claims are the same records their team sees."
       />
+
+      {/* Direct order booking — the exact same form/flow as Order Management,
+          just reachable without leaving Overview first. */}
+      <div className="mb-6 rounded-xl border border-ink/[0.08] bg-white p-4">
+        {!showOrderForm ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone/15 text-slate">
+                <PackagePlus className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium text-ink">Need vehicle stock or spare parts?</span>
+            </span>
+            <Button size="sm" onClick={() => setShowOrderForm(true)}>
+              <PackagePlus className="h-4 w-4" /> Book a New Order
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1 rounded-lg border border-ink/[0.08] bg-brand-white p-1">
+                <button onClick={() => setOrderTab('vehicles')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${orderTab === 'vehicles' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+                  <Truck className="h-3.5 w-3.5" /> Vehicles
+                </button>
+                <button onClick={() => setOrderTab('parts')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${orderTab === 'parts' ? 'bg-stone/15 text-slate' : 'text-ink/50 hover:text-ink'}`}>
+                  <Package className="h-3.5 w-3.5" /> Spare parts
+                </button>
+              </div>
+              <button onClick={() => setShowOrderForm(false)} className="text-xs font-medium text-ink/50 hover:text-ink">Cancel</button>
+            </div>
+            {orderTab === 'vehicles' ? (
+              <VehicleOrderForm onDone={() => { setShowOrderForm(false); load() }} />
+            ) : (
+              <SparePartOrderForm onDone={() => { setShowOrderForm(false); load() }} />
+            )}
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="py-10 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-ink/40" /></div>
