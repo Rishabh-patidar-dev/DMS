@@ -92,7 +92,7 @@ function OutOfStockNoticeCard({
         <div className="flex items-center gap-1.5 font-semibold text-red-700">
           <AlertTriangle className="h-3.5 w-3.5" /> Out of stock — order on hold
         </div>
-        <button onClick={() => printNotice(orderNumber, item, notice)} className="flex items-center gap-1 rounded-md border border-red-200 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100">
+        <button onClick={() => printNotice(orderNumber, item, notice)} className="flex items-center gap-1 rounded-md border border-red-200 bg-card px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100">
           <Printer className="h-3 w-3" /> Print notice
         </button>
       </div>
@@ -105,7 +105,7 @@ function OutOfStockNoticeCard({
       {notice.message && <p className="mt-1.5 text-ink/80">{notice.message}</p>}
 
       {hasOffer && (
-        <div className="mt-2 rounded-md border border-red-200 bg-white p-2.5">
+        <div className="mt-2 rounded-md border border-red-200 bg-card p-2.5">
           <p className="font-semibold text-ink">We can fulfil {notice.offeredQuantity} of {notice.requestedQuantity} now.</p>
           {notice.dealerResponse === 'PENDING' && !result && (
             <>
@@ -114,7 +114,7 @@ function OutOfStockNoticeCard({
                 <button onClick={() => respond('ACCEPTED')} disabled={responding} className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-700 disabled:opacity-60">
                   {responding ? 'Confirming…' : `Accept ${notice.offeredQuantity} now`}
                 </button>
-                <button onClick={() => respond('DECLINED')} disabled={responding} className="rounded-md border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:bg-ink/5 disabled:opacity-60">
+                <button onClick={() => respond('DECLINED')} disabled={responding} className="rounded-md border border-ink/15 bg-card px-2.5 py-1 text-[11px] font-medium text-ink/70 hover:bg-ink/5 disabled:opacity-60">
                   Decline — wait for full order
                 </button>
               </div>
@@ -212,7 +212,7 @@ export default function OrdersPage() {
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-xl bg-white p-1">
+        <div className="flex items-center gap-1 rounded-xl bg-card p-1">
           <button onClick={() => { setTab('vehicles'); setStatusFilter('') }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicles' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
             <Car className="h-3.5 w-3.5" /> Vehicles
             <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === 'vehicles' ? 'bg-white/20' : 'bg-ink/[0.06] text-ink/50'}`}>{transfers.length}</span>
@@ -234,13 +234,13 @@ export default function OrdersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search order #, model, or part…"
-            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-xs text-ink/70 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="rounded-xl border border-ink/10 bg-card px-3 py-2 text-xs text-ink/70 focus:outline-none focus:ring-2 focus:ring-accent/30"
         >
           <option value="">All statuses ({openCount} open)</option>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}

@@ -101,7 +101,7 @@ export default function WarrantyPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search claim #, customer, or VIN…"
-          className="w-full max-w-sm rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="w-full max-w-sm rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
       </div>
 

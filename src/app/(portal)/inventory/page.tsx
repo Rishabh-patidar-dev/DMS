@@ -142,13 +142,13 @@ export default function InventoryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search VIN or model…"
-            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="rounded-xl border border-ink/10 bg-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
         >
           <option value="">All statuses</option>
           {statuses.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}

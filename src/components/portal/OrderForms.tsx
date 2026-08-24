@@ -76,7 +76,7 @@ export function VehicleOrderForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-card p-4">
       <div className="space-y-3">
         {lines.map(({ key, line }) => (
           <div key={key} className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
@@ -148,7 +148,7 @@ export function SparePartOrderForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-white p-4">
+    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-card p-4">
       <div className="space-y-3">
         {lines.map(({ key, line }) => (
           <div key={key} className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">

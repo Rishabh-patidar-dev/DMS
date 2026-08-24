@@ -67,12 +67,12 @@ export default function OverviewPage() {
       </div>
 
       {showOrderForm && (
-        <div className="mb-6 rounded-2xl bg-white p-5">
+        <div className="mb-6 rounded-2xl bg-card p-5">
           <div className="mb-4 flex items-center gap-1 rounded-lg bg-canvas p-1">
-            <button onClick={() => setOrderTab('vehicles')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${orderTab === 'vehicles' ? 'bg-white text-ink shadow-sm' : 'text-ink/50 hover:text-ink'}`}>
+            <button onClick={() => setOrderTab('vehicles')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${orderTab === 'vehicles' ? 'bg-card text-ink shadow-sm' : 'text-ink/50 hover:text-ink'}`}>
               <Truck className="h-3.5 w-3.5" /> Vehicles
             </button>
-            <button onClick={() => setOrderTab('parts')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${orderTab === 'parts' ? 'bg-white text-ink shadow-sm' : 'text-ink/50 hover:text-ink'}`}>
+            <button onClick={() => setOrderTab('parts')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${orderTab === 'parts' ? 'bg-card text-ink shadow-sm' : 'text-ink/50 hover:text-ink'}`}>
               <Package className="h-3.5 w-3.5" /> Spare parts
             </button>
           </div>
@@ -89,14 +89,14 @@ export default function OverviewPage() {
           wide trend chart / accent hero card), mapped onto this portal's
           actual data instead of unrelated wallet widgets. */}
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr_260px]">
-        <div className="flex flex-col gap-3 rounded-2xl bg-white p-5">
+        <div className="flex flex-col gap-3 rounded-2xl bg-card p-5">
           <div className="text-xs font-semibold uppercase tracking-wide text-ink/40">Performance</div>
           <PerformanceRow label="Lead conversion" value={overview.leadConversionRate} suffix="%" good={(v) => v >= 20} />
           <PerformanceRow label="Avg. days in stock" value={overview.avgDaysInStock} suffix="d" good={(v) => v <= 30} invert />
           <PerformanceRow label="Warranty claim rate" value={overview.warrantyClaimRate} suffix="%" good={(v) => v <= 5} invert />
         </div>
 
-        <div className="rounded-2xl bg-white p-5">
+        <div className="rounded-2xl bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-ink/40">Units sold</div>
@@ -148,7 +148,7 @@ export default function OverviewPage() {
           manufacturer issued (order confirmations, dispatch/delivery notes,
           out-of-stock/partial notices). */}
       <div className="mb-8 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
-        <div className="rounded-2xl bg-white p-5">
+        <div className="rounded-2xl bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-ink/40">Recent activity</div>
@@ -239,10 +239,10 @@ export default function OverviewPage() {
           <Link
             key={href}
             href={href}
-            className="group flex items-center justify-between rounded-2xl bg-white px-5 py-4 transition-colors hover:bg-accent-tint"
+            className="group flex items-center justify-between rounded-2xl bg-card px-5 py-4 transition-colors hover:bg-accent-tint"
           >
             <span className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-tint text-accent-dark group-hover:bg-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-tint text-accent-dark group-hover:bg-card">
                 <Icon className="h-4 w-4" />
               </span>
               <span className="text-sm font-medium text-ink">{label}</span>

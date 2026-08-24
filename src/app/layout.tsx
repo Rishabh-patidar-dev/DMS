@@ -28,6 +28,15 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <head>
         {/* webp isn't a Next.js file-convention favicon extension (icon.ico/png/jpg/svg only) — linked manually instead */}
         <link rel="icon" type="image/webp" href="/luxus-green-logo.webp" />
+        {/* Applies the dark class before first paint — without this, the page
+            would flash light then snap to dark on every reload for a dealer
+            who's chosen dark mode. Falls back to OS preference only when the
+            dealer has never explicitly chosen (see ThemeToggle.tsx). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('dms-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-brand-white text-ink">{children}</body>
     </html>

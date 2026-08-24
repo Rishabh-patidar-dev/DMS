@@ -92,13 +92,13 @@ export default function LeadsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, phone…"
-            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-xl border border-ink/10 bg-white px-3 py-2 text-xs text-ink/70 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="rounded-xl border border-ink/10 bg-card px-3 py-2 text-xs text-ink/70 focus:outline-none focus:ring-2 focus:ring-accent/30"
         >
           <option value="">All follow-up statuses</option>
           {ASSIGNMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}

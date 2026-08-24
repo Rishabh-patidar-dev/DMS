@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Send } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { StatusBadge } from '@/components/portal/StatTile'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 type Remark = { id: number; remark: string; createdAt: string; user: { firstName: string; lastName: string | null } | null }
 type LeadDetail = {
@@ -85,16 +86,16 @@ export default function LeadDetailPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to leads
       </button>
 
-      <div className="mb-6 rounded-xl border border-ink/[0.08] bg-white p-5">
+      <Card className="mb-6">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold text-ink">{lead.firstName} {lead.lastName ?? ''}</h1>
-            <p className="mt-1 text-sm text-ink/60">{lead.email}{lead.phone ? ` · ${lead.phone}` : ''}</p>
-            {(lead.city || lead.state) && <p className="mt-0.5 text-xs text-ink/40">{[lead.city, lead.state].filter(Boolean).join(', ')}</p>}
+            <p className="mt-1 text-sm text-ink/65">{lead.email}{lead.phone ? ` · ${lead.phone}` : ''}</p>
+            {(lead.city || lead.state) && <p className="mt-0.5 text-xs text-ink/50">{[lead.city, lead.state].filter(Boolean).join(', ')}</p>}
           </div>
           <StatusBadge status={lead.assignment.status} />
         </div>
-        <p className="mt-3 text-xs text-ink/40">Source: {(lead.source ?? 'MANUAL').replace(/_/g, ' ')} · Assigned {new Date(lead.assignment.assignedAt).toLocaleDateString()}</p>
+        <p className="mt-3 text-xs text-ink/50">Source: {(lead.source ?? 'MANUAL').replace(/_/g, ' ')} · Assigned {new Date(lead.assignment.assignedAt).toLocaleDateString()}</p>
 
         {nextStatuses.length > 0 && (
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink/[0.07] pt-4">
@@ -113,9 +114,9 @@ export default function LeadDetailPage() {
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="rounded-xl border border-ink/[0.08] bg-white p-5">
+      <Card>
         <h2 className="mb-3 text-sm font-semibold text-ink">Follow-up notes</h2>
         <div className="mb-4 flex gap-2">
           <input
@@ -131,15 +132,15 @@ export default function LeadDetailPage() {
         </div>
         <div className="space-y-3">
           {lead.remarks.length === 0 ? (
-            <p className="text-xs text-ink/40">No follow-up notes yet.</p>
+            <p className="text-xs text-ink/50">No follow-up notes yet.</p>
           ) : lead.remarks.map((r) => (
             <div key={r.id} className="border-b border-ink/[0.05] pb-3 last:border-0">
               <p className="text-sm text-ink">{r.remark}</p>
-              <p className="mt-1 text-[11px] text-ink/40">{new Date(r.createdAt).toLocaleString()}</p>
+              <p className="mt-1 text-[11px] text-ink/50">{new Date(r.createdAt).toLocaleString()}</p>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

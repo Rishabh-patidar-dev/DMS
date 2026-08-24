@@ -173,7 +173,7 @@ export default function BillingPage() {
         </Card>
       )}
 
-      <div className="mb-4 flex items-center gap-1 rounded-xl bg-white p-1">
+      <div className="mb-4 flex items-center gap-1 rounded-xl bg-card p-1">
         <button onClick={() => { setTab('vehicle'); setShowForm('none') }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'vehicle' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
           <Car className="h-3.5 w-3.5" /> Vehicle Billing
           <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === 'vehicle' ? 'bg-white/20' : 'bg-ink/[0.06] text-ink/50'}`}>{vehicleBills.length}</span>
@@ -196,7 +196,7 @@ export default function BillingPage() {
           <h3 className="mb-3 text-sm font-semibold text-ink">Delivered bookings awaiting a bill</h3>
           <div className="space-y-2">
             {billable.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-sm">
+              <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-card px-3.5 py-2.5 text-sm">
                 <div>
                   <span className="font-mono text-xs text-ink/50">{b.bookingNumber}</span>
                   <span className="ml-2 font-medium text-ink">{b.customerName}</span>
@@ -214,7 +214,7 @@ export default function BillingPage() {
           <h3 className="mb-3 text-sm font-semibold text-ink">Resolved service tickets awaiting a bill</h3>
           <div className="space-y-2">
             {billableService.map((t) => (
-              <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-sm">
+              <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-card px-3.5 py-2.5 text-sm">
                 <div>
                   <span className="font-mono text-xs text-ink/50">{t.ticketNumber}</span>
                   <span className="ml-2 font-medium text-ink">{t.customerName}</span>
@@ -235,7 +235,7 @@ export default function BillingPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search bill #, customer, model, VIN…"
-              className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+              className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
           </div>
           <Select

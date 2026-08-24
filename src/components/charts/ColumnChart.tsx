@@ -28,8 +28,12 @@ export default function ColumnChart({ data, color = 'var(--accent)' }: { data: C
             onMouseEnter={() => setHovered(i)}
             onMouseLeave={() => setHovered(null)}
           >
+            {/* Fixed dark chip regardless of theme — bg-ink flips to
+                near-white in dark mode, which would make this text
+                invisible; a floating tooltip reads best dark-on-light-text
+                in either theme. */}
             {active && (
-              <div className="absolute -top-7 rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-sm">
+              <div className="absolute -top-7 rounded-md bg-ink2 px-2 py-1 text-[11px] font-semibold text-white shadow-sm">
                 {d.value}
               </div>
             )}

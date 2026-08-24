@@ -38,7 +38,7 @@ export function InvoiceCard({ invoice }: { invoice: InvoiceDoc }) {
   const d = invoice.dealer
 
   return (
-    <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-white">
+    <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-card">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink/[0.07] bg-ink/[0.02] p-5">
         <div>
           <div className="text-lg font-semibold tracking-tight text-ink">Luxus Green Mobility</div>

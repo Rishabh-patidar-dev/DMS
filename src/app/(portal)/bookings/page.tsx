@@ -103,7 +103,7 @@ export default function BookingsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search booking #, customer, model, or VIN…"
-            className="w-full rounded-xl border border-ink/10 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
         <Select

@@ -15,7 +15,7 @@ export function Card({
   className?: string
 }) {
   return (
-    <div className={`rounded-2xl bg-white ${padding === 'compact' ? 'p-3.5' : 'p-5'} ${className}`}>
+    <div className={`rounded-2xl bg-card ${padding === 'compact' ? 'p-3.5' : 'p-5'} ${className}`}>
       {children}
     </div>
   )

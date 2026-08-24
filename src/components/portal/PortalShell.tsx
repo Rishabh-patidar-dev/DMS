@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { crmFetch, clearStoredToken } from '@/lib/crm/dealerAuth'
 import { GlobalSearch } from './GlobalSearch'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 type ChartSeries = { label: string; value: number }[]
 
@@ -153,7 +154,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#E7EAE6]">
+      <div className="flex min-h-screen items-center justify-center bg-page-bg">
         <Loader2 className="h-5 w-5 animate-spin text-ink/40" />
       </div>
     )
@@ -161,8 +162,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   if (state === 'unreachable') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#E7EAE6] p-8">
-        <div className="max-w-md rounded-2xl bg-white p-8 text-center">
+      <div className="flex min-h-screen items-center justify-center bg-page-bg p-8">
+        <div className="max-w-md rounded-2xl bg-card p-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
             <WifiOff className="h-5 w-5 text-red-500" />
           </div>
@@ -189,7 +190,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           <div key={entry.id} className="mb-1 mt-2 first:mt-0">
             <button
               onClick={() => toggleGroup(entry.id)}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-ink/35 transition-colors hover:text-ink/60"
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-ink/60 transition-colors hover:text-ink/85"
             >
               <span>{entry.group}</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openGroups.has(entry.id) ? '' : '-rotate-90'}`} />
@@ -220,9 +221,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     .join('')
 
   return (
-    <div className="min-h-screen bg-[#E7EAE6] p-2.5 sm:p-4">
+    <div className="min-h-screen bg-page-bg p-2.5 sm:p-4">
       <div className="flex h-[calc(100vh-1.25rem)] gap-4 sm:h-[calc(100vh-2rem)]">
-        <aside className="hidden w-64 shrink-0 flex-col rounded-2xl bg-white p-4 lg:flex">
+        <aside className="hidden w-64 shrink-0 flex-col rounded-2xl bg-card p-4 lg:flex">
           <div className="flex items-center gap-2.5 px-1.5 pb-5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-tint">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -230,7 +231,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <p className="text-sm font-semibold leading-tight text-ink">Luxus Green</p>
-              <p className="text-[11px] leading-tight text-ink/40">Dealer Portal</p>
+              <p className="text-[11px] leading-tight text-ink/55">Dealer Portal</p>
             </div>
           </div>
 
@@ -243,13 +244,13 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
               </span>
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold text-ink">{overview?.dealer.legalName}</p>
-                <p className="truncate font-mono text-[10px] text-ink/40">{overview?.dealer.dealerCode}</p>
+                <p className="truncate font-mono text-[10px] text-ink/55">{overview?.dealer.dealerCode}</p>
               </div>
             </div>
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="mt-3 flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-ink/50 transition-colors hover:bg-white hover:text-ink"
+              className="mt-3 flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-ink/65 transition-colors hover:bg-card hover:text-ink"
             >
               <LogOut className="h-3.5 w-3.5" />
               {signingOut ? 'Signing out…' : 'Sign out'}
@@ -261,23 +262,26 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         {mobileNavOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="absolute inset-0 bg-black/30" onClick={() => setMobileNavOpen(false)} />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-xl">
+            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-card shadow-xl">
               <div className="flex items-center justify-between px-5 py-5">
                 <div className="flex items-center gap-2.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/luxus-green-logo.webp" alt="Luxus Green Mobility" className="h-7 w-7 object-contain" />
                   <p className="text-sm font-semibold text-ink">Luxus Green DMS</p>
                 </div>
-                <button onClick={() => setMobileNavOpen(false)} className="text-ink/50 hover:text-ink">
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <ThemeToggle />
+                  <button onClick={() => setMobileNavOpen(false)} className="text-ink/60 hover:text-ink" aria-label="Close menu">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
               <div className="px-2 pb-3"><GlobalSearch /></div>
               {navList(() => setMobileNavOpen(false))}
               <div className="border-t border-ink/[0.07] p-4">
                 <p className="truncate text-xs font-semibold text-ink">{overview?.dealer.legalName}</p>
-                <p className="mt-0.5 font-mono text-[11px] text-sand">{overview?.dealer.dealerCode}</p>
-                <button onClick={handleSignOut} disabled={signingOut} className="mt-3 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-sand hover:bg-sand/10 hover:text-ink">
+                <p className="mt-0.5 font-mono text-[11px] text-ink/60">{overview?.dealer.dealerCode}</p>
+                <button onClick={handleSignOut} disabled={signingOut} className="mt-3 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-ink/65 hover:bg-canvas hover:text-ink">
                   <LogOut className="h-3.5 w-3.5" />
                   {signingOut ? 'Signing out…' : 'Sign out'}
                 </button>
@@ -290,26 +294,27 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           {/* Desktop top bar — search is the centerpiece, matching the "find
               anything from here" brief; notification bell is a static affordance
               for now (no notification backend exists yet). */}
-          <header className="hidden shrink-0 items-center gap-4 rounded-2xl bg-white px-5 py-3 lg:flex">
+          <header className="hidden shrink-0 items-center gap-4 rounded-2xl bg-card px-5 py-3 lg:flex">
             <GlobalSearch />
             <div className="ml-auto flex shrink-0 items-center gap-3">
               <button className="flex h-9 w-9 items-center justify-center rounded-full bg-canvas text-ink/50 transition-colors hover:text-ink" aria-label="Notifications">
                 <Bell className="h-4 w-4" />
               </button>
+              <ThemeToggle />
               <div className="flex items-center gap-2.5 border-l border-ink/[0.08] pl-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
                   {initials || '—'}
                 </span>
                 <div className="hidden xl:block">
                   <p className="max-w-[140px] truncate text-xs font-semibold leading-tight text-ink">{overview?.dealer.legalName}</p>
-                  <p className="text-[10px] leading-tight text-ink/40">{overview?.dealer.dealerCode}</p>
+                  <p className="text-[10px] leading-tight text-ink/55">{overview?.dealer.dealerCode}</p>
                 </div>
               </div>
             </div>
           </header>
 
           {/* Mobile top bar */}
-          <header className="flex shrink-0 items-center justify-between rounded-2xl bg-white px-4 py-3 lg:hidden">
+          <header className="flex shrink-0 items-center justify-between rounded-2xl bg-card px-4 py-3 lg:hidden">
             <button onClick={() => setMobileNavOpen(true)} className="text-ink/60 hover:text-ink" aria-label="Open menu">
               <Menu className="h-5 w-5" />
             </button>
@@ -318,7 +323,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
               <img src="/luxus-green-logo.webp" alt="Luxus Green Mobility" className="h-5 w-5 object-contain" />
               <span className="text-sm font-semibold text-ink">Luxus Green DMS</span>
             </div>
-            <button onClick={handleSignOut} className="text-xs text-sand hover:text-ink">Sign out</button>
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <button onClick={handleSignOut} className="px-2 text-xs text-ink/60 hover:text-ink">Sign out</button>
+            </div>
           </header>
 
           <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl bg-canvas">{children}</main>
@@ -335,10 +343,10 @@ function PortalNavLink({ href, label, icon: Icon, active, onClick }: NavItem & {
       onClick={onClick}
       className={[
         'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-        active ? 'bg-accent text-white shadow-sm shadow-accent/25' : 'text-ink/55 hover:bg-canvas hover:text-ink',
+        active ? 'bg-accent text-white shadow-sm shadow-accent/25' : 'text-ink/75 hover:bg-canvas hover:text-ink',
       ].join(' ')}
     >
-      <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-ink/40'}`} />
+      <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-ink/55'}`} />
       {label}
     </Link>
   )

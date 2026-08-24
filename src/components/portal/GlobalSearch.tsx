@@ -125,8 +125,8 @@ export function GlobalSearch() {
 
   return (
     <div ref={containerRef} className="relative w-full max-w-md">
-      <div className="flex items-center gap-2 rounded-full border border-ink/[0.08] bg-canvas px-4 py-2.5 transition-colors focus-within:border-accent/40 focus-within:bg-white">
-        <Search className="h-4 w-4 shrink-0 text-ink/35" />
+      <div className="flex items-center gap-2 rounded-full border border-ink/[0.08] bg-canvas px-4 py-2.5 transition-colors focus-within:border-accent/40 focus-within:bg-card">
+        <Search className="h-4 w-4 shrink-0 text-ink/45" />
         <input
           ref={inputRef}
           value={query}
@@ -134,31 +134,31 @@ export function GlobalSearch() {
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
           placeholder="Search orders, invoices, leads, bills, anything…"
-          className="w-full bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
+          className="w-full bg-transparent text-sm text-ink placeholder:text-ink/45 focus:outline-none"
         />
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-ink/30" />
         ) : query ? (
-          <button onClick={() => { setQuery(''); setGroups([]) }} className="shrink-0 text-ink/30 hover:text-ink/60" aria-label="Clear search">
+          <button onClick={() => { setQuery(''); setGroups([]) }} className="shrink-0 text-ink/40 hover:text-ink/70" aria-label="Clear search">
             <X className="h-3.5 w-3.5" />
           </button>
         ) : (
-          <kbd className="hidden shrink-0 rounded-md border border-ink/10 bg-white px-1.5 py-0.5 text-[10px] font-medium text-ink/35 sm:inline-block">⌘K</kbd>
+          <kbd className="hidden shrink-0 rounded-md border border-ink/10 bg-card px-1.5 py-0.5 text-[10px] font-medium text-ink/45 sm:inline-block">⌘K</kbd>
         )}
       </div>
 
       {showPanel && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-ink/[0.08] bg-white p-2 shadow-xl">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-ink/[0.08] bg-card p-2 shadow-xl">
           {loading && groups.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-sm text-ink/40">
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-ink/50">
               <Loader2 className="h-4 w-4 animate-spin" /> Searching…
             </div>
           ) : groups.length === 0 ? (
-            <div className="py-8 text-center text-sm text-ink/40">No matches for &ldquo;{query}&rdquo;.</div>
+            <div className="py-8 text-center text-sm text-ink/50">No matches for &ldquo;{query}&rdquo;.</div>
           ) : (
             groups.map((g) => (
               <div key={g.type} className="mb-1 last:mb-0">
-                <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink/35">{g.label}</div>
+                <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink/50">{g.label}</div>
                 {g.results.map((r) => {
                   runningIndex += 1
                   const isActive = runningIndex === activeIndex

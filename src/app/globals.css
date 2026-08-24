@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Dark mode toggled via a `.dark` class on <html> (see ThemeToggle.tsx),
+   not the OS media query — a dealer's choice here shouldn't silently follow
+   their OS setting. `&` is the class itself, `& *` is everything under it,
+   so both `dark:bg-x` on the html element and on any descendant work. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* DMS-specific palette — deep forest green scale, sober/professional
    register distinct from the Ev Landing indigo+teal look (this is the
    dealer's own operational tool, not the marketing/onboarding site).
@@ -28,6 +34,18 @@
   --accent-dark: #0F7A38;
   --accent-tint: #E7F6EC;
   --canvas: #F1F3F1;
+  /* The actual card surface (Card/ChartCard/StatTile/sidebar/topbar) —
+     deliberately its OWN token, not an alias of --white: --white is a
+     barely-tinted off-white already close in lightness to --canvas, so
+     cards built on it would nearly vanish against the canvas. --card stays
+     pure white in light mode (max contrast against --canvas) and becomes a
+     lighter-than-canvas dark tone in dark mode for the same "floating card"
+     effect. */
+  --card: #FFFFFF;
+  /* The gray the whole rounded app frame (sidebar + topbar + content, all
+     as separate cards) sits on — one step darker than --canvas so the
+     frame itself reads as a distinct layer behind the UI. */
+  --page-bg: #E7EAE6;
 
   /* Categorical chart palette — greens from the brand scale plus a few
      coordinating hues for series that need to read as distinct categories,
@@ -38,6 +56,35 @@
   --viz-4: #b9790a;
   --viz-5: #6d4aed;
   --viz-6: #c23b30;
+}
+
+/* Dark mode — same tokens, dark-register values. Everything already reading
+   color through these variables (--ink, --canvas, --card, etc.) picks the
+   dark values up automatically; `--ink` flips to near-white text. --viz-2
+   is bumped lighter here specifically — the light-mode value (#235347) is a
+   dark green that all but disappears on a dark canvas. */
+.dark {
+  --ink: #EAF3EE;
+  --slate: #8FC7A7;
+  --stone: #2F5E48;
+  --sand: #9BB0A6;
+  --ink2: #04100D;
+  --white: #10231F;
+  --mint: #163832;
+  --canvas: #0A1815;
+  --card: #132A25;
+  --page-bg: #050C0A;
+
+  --accent: #22C55E;
+  --accent-dark: #34D174;
+  --accent-tint: rgba(34, 197, 94, 0.16);
+
+  --viz-1: #22C55E;
+  --viz-2: #7FBFA0;
+  --viz-3: #5B9CF0;
+  --viz-4: #E0A73C;
+  --viz-5: #A78BFA;
+  --viz-6: #F0665C;
 }
 
 @theme inline {
@@ -52,6 +99,8 @@
   --color-accent-dark: var(--accent-dark);
   --color-accent-tint: var(--accent-tint);
   --color-canvas: var(--canvas);
+  --color-card: var(--card);
+  --color-page-bg: var(--page-bg);
   --color-background: var(--ink2);
   --color-foreground: var(--white);
   --font-sans: var(--font-inter);
