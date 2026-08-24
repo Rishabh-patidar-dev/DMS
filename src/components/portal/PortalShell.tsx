@@ -37,7 +37,12 @@ type Overview = {
 }
 
 type NavIcon = React.ComponentType<{ className?: string }>
-type NavItem = { href: string; label: string; icon: NavIcon }
+// `exactOnly` is for a nav item whose href is a literal prefix of a SIBLING
+// item's href (e.g. /inventory vs /inventory/spare-parts) — without it, the
+// prefix-match below lights up both at once on any /inventory/spare-parts
+// page. Not needed for hierarchy that isn't itself in the nav (e.g. a lead
+// detail page under /leads/[id] should still light up "Leads").
+type NavItem = { href: string; label: string; icon: NavIcon; exactOnly?: boolean }
 type NavEntry = ({ kind: 'link' } & NavItem) | { kind: 'group'; id: string; group: string; items: NavItem[] }
 
 // Every module with more than one screen is a collapsible group with its
@@ -61,7 +66,7 @@ const NAV: NavEntry[] = [
     id: 'inventory',
     group: 'Inventory & Stock',
     items: [
-      { href: '/inventory', label: 'My Inventory', icon: Car },
+      { href: '/inventory', label: 'My Inventory', icon: Car, exactOnly: true },
       { href: '/inventory/spare-parts', label: 'Spare Parts', icon: PackagePlus },
     ],
   },
@@ -204,7 +209,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                   <PortalNavLink
                     key={item.href}
                     {...item}
-                    active={pathname === item.href || pathname?.startsWith(item.href + '/')}
+                    active={pathname === item.href || (!item.exactOnly && !!pathname?.startsWith(item.href + '/'))}
                     onClick={onNavigate}
                   />
                 ))}
