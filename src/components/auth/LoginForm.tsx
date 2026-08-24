@@ -2,16 +2,15 @@
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useRouter } from 'next/navigation'
 import { KeyRound, Lock } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
-import { crmFetch } from '@/lib/crm/dealerAuth'
+import { crmFetch, storeToken } from '@/lib/crm/dealerAuth'
 
 type Data = { username: string; password: string }
 
 export function LoginForm() {
-  const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Data>()
 
@@ -22,10 +21,14 @@ export function LoginForm() {
       body: JSON.stringify(data),
     })
     if (!ok || !result.ok) {
+      console.error('[LoginForm] login failed:', result)
       setServerError(result.message || 'Invalid username or password')
       return
     }
-    router.push('/')
+    if (result.token) storeToken(result.token)
+    // Full navigation, not router.push — guarantees Overview's own data
+    // fetch happens from a clean page load right after the token is stored.
+    window.location.href = '/'
   }
 
   return (
@@ -35,7 +38,7 @@ export function LoginForm() {
       )}
 
       <Input {...register('username')} label="Username" placeholder="Your username" prefix={<KeyRound className="h-4 w-4" />} error={errors.username?.message} required />
-      <Input {...register('password')} label="Password" type="password" placeholder="••••••••" prefix={<Lock className="h-4 w-4" />} error={errors.password?.message} required />
+      <PasswordInput {...register('password')} label="Password" placeholder="••••••••" prefix={<Lock className="h-4 w-4" />} error={errors.password?.message} required />
 
       <Button type="submit" fullWidth size="lg" loading={isSubmitting}>
         Sign in

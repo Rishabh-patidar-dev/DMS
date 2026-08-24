@@ -7,7 +7,7 @@ import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Users, WifiOff,
   Target, Mail, MessageCircle, FileText, ChevronDown, Menu, X, ShoppingBag, Receipt, PackagePlus, Scan,
 } from 'lucide-react'
-import { crmFetch } from '@/lib/crm/dealerAuth'
+import { crmFetch, clearStoredToken } from '@/lib/crm/dealerAuth'
 
 type ChartSeries = { label: string; value: number }[]
 
@@ -124,6 +124,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       return
     }
     if (status === 401) {
+      clearStoredToken()
       router.push('/login')
       return
     }
@@ -143,6 +144,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     setSigningOut(true)
     await crmFetch('/api/v1/dealer-auth/logout', { method: 'POST' })
+    clearStoredToken()
     router.push('/login')
   }
 
