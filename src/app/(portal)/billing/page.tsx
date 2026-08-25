@@ -87,12 +87,6 @@ const PAYMENT_MODES = [
   { value: 'CHEQUE', label: 'Cheque' },
 ]
 const STATUS_FILTERS = ['ISSUED', 'PARTIALLY_PAID', 'PAID', 'CANCELLED']
-const INDIAN_STATES = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
-  'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
-  'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
-  'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh',
-]
 const TRANSPORT_MODES = [
   { value: 'ROAD', label: 'Road' },
   { value: 'RAIL', label: 'Rail' },
@@ -378,8 +372,6 @@ function GstInvoiceDetail({ bill }: { bill: Bill }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Bill to</p>
           <p className="mt-1 text-ink">{bill.customerName}</p>
           {bill.customerAddress && <p className="text-ink/60">{bill.customerAddress}</p>}
-          {bill.customerState && <p className="text-ink/60">{bill.customerState}</p>}
-          <p className="text-ink/60">GSTIN: {bill.customerGstin || '—'}</p>
         </div>
         <div className="text-right">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Invoice details</p>
@@ -499,8 +491,6 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
   const [customerName, setCustomerName] = useState(booking?.customerName ?? serviceTicket?.customerName ?? '')
   const [customerPhone, setCustomerPhone] = useState(booking?.customerPhone ?? serviceTicket?.customerPhone ?? '')
   const [customerAddress, setCustomerAddress] = useState('')
-  const [customerState, setCustomerState] = useState('')
-  const [customerGstin, setCustomerGstin] = useState('')
   const [model, setModel] = useState(booking?.model ?? serviceTicket?.vehicleModel ?? '')
   const [vin, setVin] = useState(booking?.vehicleUnit?.vin ?? serviceTicket?.chassisNumber ?? '')
   const [exShowroomPrice, setExShowroomPrice] = useState('')
@@ -536,8 +526,6 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
         model: isManual ? model : undefined,
         vin: isManual ? (vin || undefined) : undefined,
         customerAddress: customerAddress || undefined,
-        customerState: customerState || undefined,
-        customerGstin: customerGstin || undefined,
         exShowroomPrice: isService ? undefined : exShowroomPrice,
         laborCharge: isService ? laborCharge : undefined,
         partsAmount: manualService ? (manualPartsAmount || undefined) : undefined,
@@ -595,8 +583,6 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
         <Input label="Discount, ₹ (optional)" type="number" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} />
         <Input label="GST rate, %" type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} />
         <Select label="Payment mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={PAYMENT_MODES} />
-        <Select label="Customer state (for GST place of supply)" value={customerState} onChange={(e) => setCustomerState(e.target.value)} options={INDIAN_STATES.map((s) => ({ value: s, label: s }))} placeholder="Select state" />
-        <Input label="Customer GSTIN (optional)" value={customerGstin} onChange={(e) => setCustomerGstin(e.target.value)} />
         <Input label="Address (optional)" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
       </div>
 
