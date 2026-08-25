@@ -25,17 +25,21 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
         <div className="relative flex items-center">
-          {prefix && <div className="absolute left-3 text-sand/70 pointer-events-none">{prefix}</div>}
+          {prefix && <div className="absolute left-3 text-ink/40 pointer-events-none">{prefix}</div>}
           <input
             ref={ref}
             id={inputId}
             className={[
-              'w-full rounded-xl px-3 py-2.5 text-sm text-ink',
-              'bg-brand-white border',
-              'focus:outline-none focus:ring-2 focus:ring-accent/30',
+              // Filled, borderless by default — a clean flat field defined by
+              // background contrast against its card (bg-canvas vs bg-card),
+              // not a near-invisible hairline border. A real border only
+              // appears on focus/error, where it actually needs to be seen.
+              'w-full rounded-xl px-3.5 py-2.5 text-sm text-ink',
+              'bg-canvas border-2 border-transparent',
+              'focus:outline-none focus:border-accent focus:bg-card',
               'transition-colors duration-150',
-              'placeholder:text-sand/60',
-              error ? 'border-red-300 bg-red-50/50 focus:ring-red-300' : 'border-ink/10 focus:border-accent/50',
+              'placeholder:text-ink/35',
+              error ? 'border-red-400 bg-red-50' : '',
               prefix ? 'pl-9' : '',
               suffix ? 'pr-9' : '',
               className,
@@ -44,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               .join(' ')}
             {...props}
           />
-          {suffix && <div className="absolute right-3 text-sand/70">{suffix}</div>}
+          {suffix && <div className="absolute right-3 text-ink/40">{suffix}</div>}
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
         {hint && !error && <p className="text-xs text-sand/70">{hint}</p>}

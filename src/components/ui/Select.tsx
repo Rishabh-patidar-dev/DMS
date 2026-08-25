@@ -28,10 +28,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             className={[
-              'w-full appearance-none border rounded-xl px-4 py-2.5 text-sm bg-brand-white text-ink',
-              'focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50',
+              // Same filled/borderless treatment as Input.tsx — one consistent
+              // field style across the whole portal.
+              'w-full appearance-none rounded-xl px-3.5 py-2.5 pr-9 text-sm bg-canvas text-ink border-2 border-transparent',
+              'focus:outline-none focus:border-accent focus:bg-card',
               'transition-colors duration-150 cursor-pointer',
-              error ? 'border-red-400 focus:ring-red-200' : 'border-sand/50 hover:border-sand',
+              error ? 'border-red-400 bg-red-50' : '',
               className,
             ].join(' ')}
             {...props}
@@ -41,7 +43,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sand pointer-events-none" />
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/40 pointer-events-none" />
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
         {hint && !error && <p className="text-xs text-sand">{hint}</p>}
