@@ -2,12 +2,18 @@ import { LucideIcon } from 'lucide-react'
 
 export function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-card px-4 py-3.5">
+    <div className="flex h-full flex-col rounded-2xl bg-card px-4 py-3.5">
       <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-accent-tint">
         <Icon className="h-4 w-4 shrink-0 text-accent-dark" />
       </div>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/60">{label}</span>
-      <p className="mt-0.5 text-xl font-semibold text-ink">{value}</p>
+      {/* min-h reserves space for 2 lines regardless of whether this
+          particular label wraps — without it, a 1-line label ("Open leads")
+          and a 2-line label ("Open vehicle orders") push the number below
+          to two different heights, so numbers across a row of tiles don't
+          line up. flex-1 + mt-auto on the number then pins it to the same
+          baseline in every tile no matter the label's actual line count. */}
+      <span className="min-h-[2.4em] text-[10px] font-semibold uppercase leading-tight tracking-wider text-ink/60">{label}</span>
+      <p className="mt-auto pt-0.5 text-xl font-semibold text-ink">{value}</p>
     </div>
   )
 }

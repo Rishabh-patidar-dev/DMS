@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/portal/StatTile'
 import { Button } from '@/components/ui/Button'
 import { InvoiceCard } from '@/components/portal/InvoiceCard'
 import type { InvoiceDoc, InvoiceType } from '@/lib/invoicePdf'
+import { INVOICE_LAST_SEEN_KEY } from '@/lib/invoicesSeen'
 
 const FILTERS: { value: string; label: string }[] = [
   { value: '', label: 'All' },
@@ -40,6 +41,18 @@ export default function InvoicesPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Clears the sidebar's unread-invoices badge — PortalShell re-checks the
+  // count on every route change, so the next time it does, everything
+  // issued up to this moment no longer counts as unread.
+  useEffect(() => {
+    try {
+      localStorage.setItem(INVOICE_LAST_SEEN_KEY, new Date().toISOString())
+    } catch {
+      // localStorage unavailable (private mode etc.) — the badge just
+      // won't clear locally, not worth surfacing an error for.
+    }
+  }, [])
 
   const visible = typeFilter ? invoices.filter((i) => i.type === (typeFilter as InvoiceType)) : invoices
 

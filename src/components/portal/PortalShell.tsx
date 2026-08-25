@@ -11,6 +11,7 @@ import {
 import { crmFetch, clearStoredToken } from '@/lib/crm/dealerAuth'
 import { GlobalSearch } from './GlobalSearch'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { INVOICE_LAST_SEEN_KEY } from '@/lib/invoicesSeen'
 
 type ChartSeries = { label: string; value: number }[]
 
@@ -115,6 +116,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const [signingOut, setSigningOut] = useState(false)
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['leads']))
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [invoiceUnreadCount, setInvoiceUnreadCount] = useState(0)
 
   const toggleGroup = (id: string) => {
     setOpenGroups((prev) => {
@@ -123,6 +125,27 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       return next
     })
   }
+
+  // Re-checks on every route change (not just mount) — PortalShell persists
+  // across navigation, so this is the only moment it can notice the
+  // Invoices page just cleared the localStorage "last seen" marker.
+  useEffect(() => {
+    let active = true
+    let since = ''
+    try {
+      since = localStorage.getItem(INVOICE_LAST_SEEN_KEY) ?? ''
+    } catch {
+      // private-mode/unavailable storage — treat as never seen
+    }
+    crmFetch(`/api/v1/dealer-portal/invoices/new-count${since ? `?since=${encodeURIComponent(since)}` : ''}`)
+      .then(({ ok, data }) => {
+        if (active && ok) setInvoiceUnreadCount(data.count ?? 0)
+      })
+      .catch(() => {
+        // non-critical UI indicator — a failed check just leaves it as-is
+      })
+    return () => { active = false }
+  }, [pathname])
 
   const load = useCallback(async () => {
     const { ok, status, data } = await crmFetch('/api/v1/dealer-portal/overview')
@@ -211,6 +234,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                     {...item}
                     active={pathname === item.href || (!item.exactOnly && !!pathname?.startsWith(item.href + '/'))}
                     onClick={onNavigate}
+                    badgeCount={item.href === '/invoices' ? invoiceUnreadCount : undefined}
                   />
                 ))}
               </div>
@@ -323,7 +347,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PortalNavLink({ href, label, icon: Icon, active, onClick }: NavItem & { active?: boolean; onClick?: () => void }) {
+function PortalNavLink({ href, label, icon: Icon, active, onClick, badgeCount }: NavItem & { active?: boolean; onClick?: () => void; badgeCount?: number }) {
   return (
     <Link
       href={href}
@@ -334,7 +358,16 @@ function PortalNavLink({ href, label, icon: Icon, active, onClick }: NavItem & {
       ].join(' ')}
     >
       <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-ink/55'}`} />
-      {label}
+      <span className="flex-1">{label}</span>
+      {!!badgeCount && (
+        <span
+          className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
+          style={active ? { backgroundColor: 'rgba(255,255,255,0.25)', color: 'white' } : { backgroundColor: '#dc2626', color: 'white' }}
+          title={`${badgeCount} invoice${badgeCount === 1 ? '' : 's'} you haven't looked at yet`}
+        >
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </span>
+      )}
     </Link>
   )
 }
