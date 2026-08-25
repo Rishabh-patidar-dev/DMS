@@ -269,24 +269,58 @@ function TicketCard({ ticket, spareParts, onChanged }: { ticket: Ticket; sparePa
   )
 }
 
+type StagedPart = { partId: string; partName: string; quantity: number; maxOnHand: number }
+
 function PartsPanel({ ticket, spareParts, canAdd, onChanged }: { ticket: Ticket; spareParts: SparePart[]; canAdd: boolean; onChanged: () => void }) {
   const [partId, setPartId] = useState('')
   const [quantity, setQuantity] = useState('1')
+  // Staged parts get queued here (any number, of any mix of parts) before a
+  // single "Add N parts used" submit fires them all — instead of the old
+  // one-at-a-time flow that made adding e.g. brake pads + a headlight to the
+  // same ticket take two separate round trips.
+  const [staged, setStaged] = useState<StagedPart[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const selectedPart = spareParts.find((p) => String(p.id) === partId)
+  const stagedQtyForSelected = staged.find((s) => s.partId === partId)?.quantity ?? 0
+  const remainingForSelected = selectedPart ? selectedPart.quantityOnHand - stagedQtyForSelected : 0
+  const qtyNum = Number(quantity) || 0
 
-  async function addPart() {
+  function stagePart() {
+    if (!selectedPart || qtyNum <= 0 || qtyNum > remainingForSelected) return
+    setStaged((prev) => {
+      const existing = prev.find((s) => s.partId === partId)
+      if (existing) {
+        return prev.map((s) => (s.partId === partId ? { ...s, quantity: s.quantity + qtyNum } : s))
+      }
+      return [...prev, { partId, partName: selectedPart.partName, quantity: qtyNum, maxOnHand: selectedPart.quantityOnHand }]
+    })
+    setPartId('')
+    setQuantity('1')
+  }
+
+  function unstagePart(id: string) {
+    setStaged((prev) => prev.filter((s) => s.partId !== id))
+  }
+
+  async function submitStaged() {
+    if (staged.length === 0) return
     setBusy(true)
     setError(null)
-    const { ok, data } = await crmFetch(`/api/v1/dealer-portal/service-tickets/${ticket.id}/parts`, {
-      method: 'POST',
-      body: JSON.stringify({ dealerSparePartId: partId, quantityUsed: quantity }),
-    })
+    for (const row of staged) {
+      const { ok, data } = await crmFetch(`/api/v1/dealer-portal/service-tickets/${ticket.id}/parts`, {
+        method: 'POST',
+        body: JSON.stringify({ dealerSparePartId: row.partId, quantityUsed: row.quantity }),
+      })
+      if (!ok) {
+        setBusy(false)
+        setError(`${row.partName}: ${data.message ?? 'Could not add this part'} — the rest of the list is still queued, remove or fix it and try again.`)
+        return
+      }
+    }
     setBusy(false)
-    if (!ok) { setError(data.message ?? 'Could not add part'); return }
-    setPartId(''); setQuantity('1')
+    setStaged([])
     onChanged()
   }
 
@@ -320,21 +354,46 @@ function PartsPanel({ ticket, spareParts, canAdd, onChanged }: { ticket: Ticket;
       )}
 
       {canAdd ? (
-        <div className="flex flex-wrap items-end gap-2">
-          <Select
-            label="Spare part"
-            value={partId}
-            onChange={(e) => setPartId(e.target.value)}
-            options={spareParts.map((p) => ({ value: String(p.id), label: `${p.partName} (${p.quantityOnHand} on hand)` }))}
-            placeholder="Select part"
-            className="w-64"
-          />
-          <Input label="Qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-20" />
-          <Button size="sm" disabled={!partId || busy || (selectedPart != null && Number(quantity) > selectedPart.quantityOnHand)} loading={busy} onClick={addPart}>
-            Add part used
-          </Button>
-          {selectedPart != null && Number(quantity) > selectedPart.quantityOnHand && (
-            <span className="text-xs text-red-500">Only {selectedPart.quantityOnHand} in stock</span>
+        <div>
+          {staged.length > 0 && (
+            <div className="mb-3 space-y-1.5 rounded-lg bg-card p-2.5">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-ink/40">Queued to add</div>
+              {staged.map((s) => (
+                <div key={s.partId} className="flex items-center justify-between text-sm">
+                  <span className="text-ink">{s.partName} × {s.quantity}</span>
+                  <button onClick={() => unstagePart(s.partId)} disabled={busy} className="text-ink/30 hover:text-red-500" title="Remove from queue">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-end gap-2">
+            <Select
+              label="Spare part"
+              value={partId}
+              onChange={(e) => setPartId(e.target.value)}
+              options={spareParts.map((p) => {
+                const remaining = p.quantityOnHand - (staged.find((s) => s.partId === String(p.id))?.quantity ?? 0)
+                return { value: String(p.id), label: `${p.partName} (${remaining} on hand)` }
+              })}
+              placeholder="Select part"
+              className="w-64"
+            />
+            <Input label="Qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-20" />
+            <Button size="sm" variant="secondary" disabled={!partId || busy || qtyNum <= 0 || qtyNum > remainingForSelected} onClick={stagePart}>
+              <Plus className="h-3.5 w-3.5" /> Queue part
+            </Button>
+            {selectedPart != null && qtyNum > remainingForSelected && (
+              <span className="text-xs text-red-500">Only {remainingForSelected} left to queue</span>
+            )}
+          </div>
+
+          {staged.length > 0 && (
+            <Button size="sm" className="mt-3" disabled={busy} loading={busy} onClick={submitStaged}>
+              Add {staged.length} part{staged.length === 1 ? '' : 's'} used
+            </Button>
           )}
         </div>
       ) : ticket.partsUsed.length === 0 ? (
