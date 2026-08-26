@@ -101,7 +101,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'unreachable'>('loading')
   const [signingOut, setSigningOut] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['order-management', 'inventory']))
+  // All groups start collapsed — a group only opens once the user actually
+  // clicks it, rather than pre-guessing which one they'll want.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [invoiceUnreadCount, setInvoiceUnreadCount] = useState(0)
 
