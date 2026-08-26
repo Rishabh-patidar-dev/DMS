@@ -43,7 +43,13 @@ type NavIcon = React.ComponentType<{ className?: string }>
 // prefix-match below lights up both at once on any /inventory/spare-parts
 // page. Not needed for hierarchy that isn't itself in the nav (e.g. a lead
 // detail page under /leads/[id] should still light up "Leads").
-type NavItem = { href: string; label: string; icon: NavIcon; exactOnly?: boolean }
+// `asModule` renders a top-level single-page link with the same flat
+// uppercase typography as a collapsed group header (no icon, no filled
+// pill) instead of the icon+pill treatment used for links nested inside a
+// group — a standalone module (one page, no sub-items) still reads as a
+// section of the sidebar, not a stray sub-item, this way. Overview keeps the
+// pill treatment since it's the app's home link, not a module.
+type NavItem = { href: string; label: string; icon: NavIcon; exactOnly?: boolean; asModule?: boolean }
 type NavEntry = ({ kind: 'link' } & NavItem) | { kind: 'group'; id: string; group: string; items: NavItem[] }
 
 // Every module with more than one screen is a collapsible group with its
@@ -51,7 +57,7 @@ type NavEntry = ({ kind: 'link' } & NavItem) | { kind: 'group'; id: string; grou
 // directly in the top-level list.
 const NAV: NavEntry[] = [
   { kind: 'link', href: '/', label: 'Overview', icon: LayoutGrid },
-  { kind: 'link', href: '/leads', label: 'Leads', icon: Users },
+  { kind: 'link', href: '/leads', label: 'Leads', icon: Users, asModule: true },
   {
     kind: 'group',
     id: 'order-management',
@@ -60,7 +66,7 @@ const NAV: NavEntry[] = [
       { href: '/orders', label: 'Create Order', icon: ClipboardList },
     ],
   },
-  { kind: 'link', href: '/invoices', label: 'Invoices', icon: FileText },
+  { kind: 'link', href: '/invoices', label: 'Invoices', icon: FileText, asModule: true },
   {
     kind: 'group',
     id: 'inventory',
@@ -86,7 +92,7 @@ const NAV: NavEntry[] = [
       { href: '/service', label: 'Service Tickets', icon: Wrench },
     ],
   },
-  { kind: 'link', href: '/warranty', label: 'Warranty Management', icon: ShieldCheck },
+  { kind: 'link', href: '/warranty', label: 'Warranty Management', icon: ShieldCheck, asModule: true },
 ]
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
@@ -197,13 +203,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     <nav className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
       {NAV.map((entry) =>
         entry.kind === 'link' ? (
-          <PortalNavLink
-            key={entry.href}
-            {...entry}
-            active={pathname === entry.href}
-            onClick={onNavigate}
-            badgeCount={entry.href === '/invoices' ? invoiceUnreadCount : undefined}
-          />
+          <div key={entry.href} className={entry.asModule ? 'mb-1 mt-2 first:mt-0' : undefined}>
+            <PortalNavLink
+              {...entry}
+              active={pathname === entry.href}
+              onClick={onNavigate}
+              badgeCount={entry.href === '/invoices' ? invoiceUnreadCount : undefined}
+            />
+          </div>
         ) : (
           <div key={entry.id} className="mb-1 mt-2 first:mt-0">
             <button
@@ -334,7 +341,35 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PortalNavLink({ href, label, icon: Icon, active, onClick, badgeCount }: NavItem & { active?: boolean; onClick?: () => void; badgeCount?: number }) {
+function PortalNavLink({ href, label, icon: Icon, active, onClick, badgeCount, asModule }: NavItem & { active?: boolean; onClick?: () => void; badgeCount?: number }) {
+  const badge = !!badgeCount && (
+    <span
+      className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
+      style={active && !asModule ? { backgroundColor: 'rgba(255,255,255,0.25)', color: 'white' } : { backgroundColor: '#dc2626', color: 'white' }}
+      title={`${badgeCount} invoice${badgeCount === 1 ? '' : 's'} you haven't looked at yet`}
+    >
+      {badgeCount! > 99 ? '99+' : badgeCount}
+    </span>
+  )
+
+  // A standalone one-page module (Leads, Invoices, Warranty Management)
+  // sits at the same level as a group header ("ORDER MANAGEMENT") in the
+  // nav list — matching that header's flat uppercase typography (no icon,
+  // no filled pill) is what makes it read as another section of the
+  // sidebar instead of a stray sub-item link.
+  if (asModule) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${active ? 'text-accent' : 'text-ink/60 hover:text-ink/85'}`}
+      >
+        <span>{label}</span>
+        {badge}
+      </Link>
+    )
+  }
+
   return (
     <Link
       href={href}
@@ -346,15 +381,7 @@ function PortalNavLink({ href, label, icon: Icon, active, onClick, badgeCount }:
     >
       <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-ink/55'}`} />
       <span className="flex-1">{label}</span>
-      {!!badgeCount && (
-        <span
-          className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
-          style={active ? { backgroundColor: 'rgba(255,255,255,0.25)', color: 'white' } : { backgroundColor: '#dc2626', color: 'white' }}
-          title={`${badgeCount} invoice${badgeCount === 1 ? '' : 's'} you haven't looked at yet`}
-        >
-          {badgeCount > 99 ? '99+' : badgeCount}
-        </span>
-      )}
+      {badge}
     </Link>
   )
 }
