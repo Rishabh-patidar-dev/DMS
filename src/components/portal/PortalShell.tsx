@@ -355,8 +355,9 @@ function PortalNavLink({ href, label, icon: Icon, active, onClick, badgeCount, a
   // A standalone one-page module (Leads, Invoices, Warranty Management)
   // sits at the same level as a group header ("ORDER MANAGEMENT") in the
   // nav list — matching that header's flat uppercase typography (no icon,
-  // no filled pill) is what makes it read as another section of the
-  // sidebar instead of a stray sub-item link.
+  // no filled pill, same trailing chevron even though there's nothing to
+  // expand) is what makes it read as another section of the sidebar instead
+  // of a stray sub-item link.
   if (asModule) {
     return (
       <Link
@@ -365,7 +366,10 @@ function PortalNavLink({ href, label, icon: Icon, active, onClick, badgeCount, a
         className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${active ? 'text-accent' : 'text-ink/60 hover:text-ink/85'}`}
       >
         <span>{label}</span>
-        {badge}
+        <span className="flex shrink-0 items-center gap-1.5">
+          {badge}
+          <ChevronDown className="h-3.5 w-3.5 -rotate-90" />
+        </span>
       </Link>
     )
   }

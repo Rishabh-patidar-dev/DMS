@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, RefreshCw, Upload, Scan, FileText, IndianRupee, Receipt, Search, FileStack } from 'lucide-react'
+import { Loader2, RefreshCw, Upload, Scan, FileText, IndianRupee, Receipt, Search, Plus, X } from 'lucide-react'
 import { crmFetch, CRM_API_URL } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -15,24 +15,21 @@ import { INVOICE_LAST_SEEN_KEY } from '@/lib/invoicesSeen'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 // ============================================================================
-// One "Invoices" module, two tabs — the OEM-issued documents this dealer
-// receives (order confirmations, dispatch/delivery notes, etc.) and this
-// dealer's own logged vendor purchase bills. Different shapes (a
-// read-received-document list vs. a dealer-authored OCR-upload-and-log
-// flow), so they stay as separate panels under one shared tab switch rather
-// than one merged table.
+// One "Invoices" module, one list — an invoice is an invoice regardless of
+// which side wrote it, so manufacturer-issued documents and this dealer's
+// own logged vendor purchase bills are shown together, sorted by date, not
+// split behind a tab switch.
 // ============================================================================
 
-const FILTERS: { value: string; label: string }[] = [
-  { value: '', label: 'All' },
-  { value: 'CONFIRMATION', label: 'Order confirmed' },
-  { value: 'DISPATCH', label: 'Dispatched' },
-  { value: 'DELIVERY', label: 'Delivered' },
-  { value: 'PARTIAL', label: 'Partial' },
-  { value: 'OUT_OF_STOCK', label: 'Out of stock' },
-  { value: 'CANCELLATION', label: 'Cancelled' },
-  { value: 'CUSTOM', label: 'General' },
-]
+const TYPE_LABEL: Record<InvoiceType, string> = {
+  CONFIRMATION: 'Order confirmed',
+  DISPATCH: 'Dispatched',
+  DELIVERY: 'Delivered',
+  PARTIAL: 'Partial',
+  OUT_OF_STOCK: 'Out of stock',
+  CANCELLATION: 'Cancelled',
+  CUSTOM: 'General',
+}
 
 type PurchaseInvoice = {
   id: number
@@ -77,23 +74,34 @@ const CATEGORIES = [
 const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
 const resolveUrl = (url: string) => (url.startsWith('http') ? url : `${CRM_API_URL}${url}`)
 
-type Tab = 'manufacturer' | 'purchase'
+// One normalized row shape for both sources — this is what actually makes
+// them "just invoices" instead of two separate tables.
+type Row = {
+  key: string
+  date: string
+  number: string
+  party: string
+  subject: string
+  amount: number | null
+  statusLabel: string
+  onView: () => void
+}
 
 export default function InvoicesPage() {
   const deepLinkQ = useDeepLinkQuery()
-  const [tab, setTab] = useState<Tab>('manufacturer')
 
-  // Manufacturer invoices
   const [invoices, setInvoices] = useState<InvoiceDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [typeFilter, setTypeFilter] = useState('')
 
-  // Purchase invoices
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([])
   const [purchaseLoading, setPurchaseLoading] = useState(true)
   const [purchaseLoadError, setPurchaseLoadError] = useState<string | null>(null)
-  const [purchaseSearch, setPurchaseSearch] = useState(deepLinkQ)
+
+  const [search, setSearch] = useState(deepLinkQ)
+  const [showLogForm, setShowLogForm] = useState(false)
+  const [viewingInvoice, setViewingInvoice] = useState<InvoiceDoc | null>(null)
+  const [viewingPurchase, setViewingPurchase] = useState<PurchaseInvoice | null>(null)
 
   const loadInvoices = useCallback(async () => {
     setLoading(true)
@@ -138,139 +146,152 @@ export default function InvoicesPage() {
     }
   }, [])
 
-  const visible = typeFilter ? invoices.filter((i) => i.type === (typeFilter as InvoiceType)) : invoices
+  const rows: Row[] = useMemo(() => {
+    const fromInvoices: Row[] = invoices.map((inv, i) => ({
+      key: `inv-${inv.invoiceNumber}-${i}`,
+      date: inv.issuedAt,
+      number: inv.invoiceNumber,
+      party: 'Manufacturer',
+      subject: inv.item,
+      amount: inv.unitPrice != null && inv.fulfilledQuantity != null ? Number(inv.unitPrice) * inv.fulfilledQuantity : null,
+      statusLabel: TYPE_LABEL[inv.type] ?? inv.type,
+      onView: () => setViewingInvoice(inv),
+    }))
+    const fromPurchases: Row[] = purchaseInvoices.map((p) => ({
+      key: `pur-${p.id}`,
+      date: p.invoiceDate,
+      number: p.invoiceNumber,
+      party: p.vendorName,
+      subject: CATEGORIES.find((c) => c.value === p.category)?.label ?? p.category,
+      amount: Number(p.amount),
+      statusLabel: 'Purchase',
+      onView: () => setViewingPurchase(p),
+    }))
+    return [...fromInvoices, ...fromPurchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [invoices, purchaseInvoices])
 
-  const totalAmount = purchaseInvoices.reduce((sum, i) => sum + Number(i.amount), 0)
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((r) => r.number.toLowerCase().includes(q) || r.party.toLowerCase().includes(q) || r.subject.toLowerCase().includes(q))
+  }, [rows, search])
+
+  const totalValue = rows.reduce((sum, r) => sum + (r.amount ?? 0), 0)
   const scannedCount = purchaseInvoices.filter((i) => i.ocrStatus === 'DONE').length
-  const filteredPurchaseInvoices = useMemo(() => {
-    const q = purchaseSearch.trim().toLowerCase()
-    return purchaseInvoices.filter((inv) => !q || inv.vendorName.toLowerCase().includes(q) || inv.invoiceNumber.toLowerCase().includes(q))
-  }, [purchaseInvoices, purchaseSearch])
+  const anyLoading = loading || purchaseLoading
+  const anyError = loadError || purchaseLoadError
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <PageHeader title="Invoices" subtitle="Manufacturer-issued documents and your own logged vendor purchase bills, in one place." />
+      <PageHeader title="Invoices" subtitle="Every invoice the business touches — manufacturer documents and vendor purchase bills, together in one list." />
 
-      <div className="mb-5 flex items-center gap-1 rounded-xl bg-card p-1">
-        <button onClick={() => setTab('manufacturer')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'manufacturer' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
-          <FileStack className="h-3.5 w-3.5" /> Manufacturer Invoices
-        </button>
-        <button onClick={() => setTab('purchase')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'purchase' ? 'bg-accent text-white' : 'text-ink/50 hover:text-ink'}`}>
-          <Receipt className="h-3.5 w-3.5" /> Purchase Invoices
-        </button>
+      {anyError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <span>{loadError || purchaseLoadError}</span>
+          <Button size="sm" variant="outline" onClick={() => { loadInvoices(); loadPurchaseInvoices() }}>
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile icon={Receipt} label="Total invoices" value={rows.length} />
+        <StatTile icon={IndianRupee} label="Total value" value={money(totalValue)} />
+        <StatTile icon={Scan} label="Purchase bills scanned" value={scannedCount} />
       </div>
 
-      {tab === 'manufacturer' ? (
-        <>
-          <p className="mb-5 text-xs text-ink/45">Order confirmations, dispatch and delivery documents, out-of-stock notices, and anything else the manufacturer sends you — every one downloadable as a PDF.</p>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search invoice #, party, or subject…"
+            className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+        <Button size="sm" variant={showLogForm ? 'primary' : 'outline'} onClick={() => setShowLogForm((v) => !v)}>
+          {showLogForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Log purchase invoice
+        </Button>
+      </div>
 
-          {loadError && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              <span>{loadError}</span>
-              <Button size="sm" variant="outline" onClick={loadInvoices}>
-                <RefreshCw className="h-3.5 w-3.5" /> Retry
-              </Button>
-            </div>
-          )}
+      {showLogForm && <LogInvoiceForm onDone={() => { setShowLogForm(false); loadPurchaseInvoices() }} />}
 
-          <div className="mb-5 flex flex-wrap gap-1.5">
-            {FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setTypeFilter(f.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  typeFilter === f.value ? 'border-stone bg-stone/10 text-ink' : 'border-ink/10 text-ink/50 hover:border-ink/20'
-                }`}
-              >
-                {f.label}
-              </button>
+      <Card padding="compact" className="overflow-hidden !p-0">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-ink/[0.07] text-left text-ink/50">
+              <th className="px-4 py-3 font-medium">Date</th>
+              <th className="px-4 py-3 font-medium">Invoice #</th>
+              <th className="px-4 py-3 font-medium">Party</th>
+              <th className="px-4 py-3 font-medium">Subject</th>
+              <th className="px-4 py-3 font-medium">Type</th>
+              <th className="px-4 py-3 font-medium">Amount</th>
+              <th className="px-4 py-3 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {anyLoading ? (
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
+            ) : filteredRows.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-ink/40">{rows.length === 0 ? 'No invoices yet.' : 'No invoices match your search.'}</td></tr>
+            ) : filteredRows.map((r) => (
+              <tr key={r.key} className="border-b border-ink/[0.05] last:border-0">
+                <td className="px-4 py-3 text-ink/70">{new Date(r.date).toLocaleDateString()}</td>
+                <td className="px-4 py-3 font-mono text-xs text-ink">{r.number}</td>
+                <td className="px-4 py-3 text-ink">{r.party}</td>
+                <td className="px-4 py-3 text-ink/70">{r.subject}</td>
+                <td className="px-4 py-3"><StatusBadge status={r.statusLabel} /></td>
+                <td className="px-4 py-3 tabular-nums text-ink">{r.amount != null ? money(r.amount) : '—'}</td>
+                <td className="px-4 py-3">
+                  <button onClick={r.onView} className="text-xs font-medium text-slate hover:underline">View</button>
+                </td>
+              </tr>
             ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {viewingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setViewingInvoice(null)}>
+          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <InvoiceCard invoice={viewingInvoice} />
           </div>
+        </div>
+      )}
 
-          {loading ? (
-            <div className="flex justify-center py-16 text-ink/40"><Loader2 className="h-5 w-5 animate-spin" /></div>
-          ) : visible.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-ink/15 py-16 text-center text-sm text-ink/40">
-              {invoices.length === 0 ? 'No invoices yet.' : 'No invoices match this filter.'}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {visible.map((inv, i) => (
-                <InvoiceCard key={`${inv.invoiceNumber}-${i}`} invoice={inv} />
-              ))}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <p className="mb-5 text-xs text-ink/45">Log invoices from the OEM or spare-parts suppliers — photograph one and the extracted text is right there to copy from while you fill in the real fields.</p>
-
-          {purchaseLoadError && (
-            <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 !bg-red-50 text-sm text-red-700">
-              <span>{purchaseLoadError}</span>
-              <Button size="sm" variant="outline" onClick={loadPurchaseInvoices}>
-                <RefreshCw className="h-3.5 w-3.5" /> Retry
-              </Button>
+      {viewingPurchase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setViewingPurchase(null)}>
+          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <Card>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs text-ink/50">{viewingPurchase.invoiceNumber}</p>
+                  <p className="text-base font-semibold text-ink">{viewingPurchase.vendorName}</p>
+                </div>
+                <button onClick={() => setViewingPurchase(null)} className="text-ink/40 hover:text-ink"><X className="h-4 w-4" /></button>
+              </div>
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between"><dt className="text-ink/50">Date</dt><dd className="text-ink">{new Date(viewingPurchase.invoiceDate).toLocaleDateString()}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/50">Amount</dt><dd className="text-ink">{money(viewingPurchase.amount)}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/50">Category</dt><dd className="text-ink">{CATEGORIES.find((c) => c.value === viewingPurchase.category)?.label ?? viewingPurchase.category}</dd></div>
+                {viewingPurchase.vendorGstin && <div className="flex justify-between"><dt className="text-ink/50">Vendor GSTIN</dt><dd className="text-ink">{viewingPurchase.vendorGstin}</dd></div>}
+                {viewingPurchase.notes && <div><dt className="text-ink/50">Notes</dt><dd className="mt-1 text-ink">{viewingPurchase.notes}</dd></div>}
+              </dl>
+              {viewingPurchase.fileUrl && (
+                <a href={resolveUrl(viewingPurchase.fileUrl)} target="_blank" rel="noreferrer" className="mt-4 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
+                  <FileText className="h-4 w-4" /> View uploaded file
+                </a>
+              )}
+              {viewingPurchase.ocrExtractedText && (
+                <div className="mt-4">
+                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink/40">Extracted text</p>
+                  <p className="whitespace-pre-wrap rounded-lg bg-brand-white px-3 py-2 text-xs text-ink/70">{viewingPurchase.ocrExtractedText}</p>
+                </div>
+              )}
             </Card>
-          )}
-
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile icon={Receipt} label="Invoices logged" value={purchaseInvoices.length} />
-            <StatTile icon={IndianRupee} label="Total value" value={money(totalAmount)} />
-            <StatTile icon={Scan} label="OCR-scanned" value={scannedCount} />
           </div>
-
-          <LogInvoiceForm onDone={loadPurchaseInvoices} />
-
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
-              <input
-                value={purchaseSearch}
-                onChange={(e) => setPurchaseSearch(e.target.value)}
-                placeholder="Search vendor or invoice #…"
-                className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
-              />
-            </div>
-          </div>
-
-          <Card padding="compact" className="overflow-hidden !p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-ink/[0.07] text-left text-ink/50">
-                  <th className="px-4 py-3 font-medium">Vendor</th>
-                  <th className="px-4 py-3 font-medium">Invoice #</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Amount</th>
-                  <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">File</th>
-                </tr>
-              </thead>
-              <tbody>
-                {purchaseLoading ? (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-                ) : filteredPurchaseInvoices.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-ink/40">{purchaseInvoices.length === 0 ? 'No purchase invoices logged yet.' : 'No invoices match your search.'}</td></tr>
-                ) : filteredPurchaseInvoices.map((inv) => (
-                  <tr key={inv.id} className="border-b border-ink/[0.05] last:border-0">
-                    <td className="px-4 py-3 text-ink">{inv.vendorName}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-ink/70">{inv.invoiceNumber}</td>
-                    <td className="px-4 py-3 text-ink/70">{new Date(inv.invoiceDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 tabular-nums text-ink">{money(inv.amount)}</td>
-                    <td className="px-4 py-3"><StatusBadge status={inv.category} /></td>
-                    <td className="px-4 py-3">
-                      {inv.fileUrl ? (
-                        <a href={resolveUrl(inv.fileUrl)} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-medium text-slate hover:underline">
-                          <FileText className="h-3.5 w-3.5" /> View
-                        </a>
-                      ) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </>
+        </div>
       )}
     </div>
   )
