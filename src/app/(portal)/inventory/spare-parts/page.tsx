@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search } from 'lucide-react'
+import { Loader2, Plus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search, ScanLine, PenLine, Upload, X } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
@@ -27,7 +27,7 @@ export default function SparePartsInventoryPage() {
   const [parts, setParts] = useState<SparePart[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState<'none' | 'manual' | 'scan'>('none')
   const [search, setSearch] = useState(deepLinkQ)
 
   const load = useCallback(async () => {
@@ -86,12 +86,18 @@ export default function SparePartsInventoryPage() {
             className="w-full rounded-xl border border-ink/10 bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
-        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-          <Plus className="h-4 w-4" /> Add / restock part
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant={showForm === 'manual' ? 'primary' : 'outline'} onClick={() => setShowForm((v) => v === 'manual' ? 'none' : 'manual')}>
+            <PenLine className="h-4 w-4" /> Add manually
+          </Button>
+          <Button size="sm" variant={showForm === 'scan' ? 'primary' : 'outline'} onClick={() => setShowForm((v) => v === 'scan' ? 'none' : 'scan')}>
+            <ScanLine className="h-4 w-4" /> Scan bill
+          </Button>
+        </div>
       </div>
 
-      {showForm && <NewPartForm onDone={() => { setShowForm(false); load() }} />}
+      {showForm === 'manual' && <AddManualStockForm onDone={() => { setShowForm('none'); load() }} />}
+      {showForm === 'scan' && <ScanBillForm onDone={() => { setShowForm('none'); load() }} />}
 
       <Card padding="compact" className="overflow-hidden !p-0">
         <table className="w-full text-sm">
@@ -173,50 +179,230 @@ function PartRow({ part, onChanged }: { part: SparePart; onChanged: () => void }
   )
 }
 
-function NewPartForm({ onDone }: { onDone: () => void }) {
-  const [partName, setPartName] = useState('')
-  const [partCode, setPartCode] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [unitPrice, setUnitPrice] = useState('')
+// Shared row shape for both the manual multi-line form and the scan-bill
+// review table — same fields either way, since scanning just pre-fills what
+// the dealer would otherwise type in by hand.
+type StockLine = { partName: string; partCode: string; quantity: string; unitPrice: string }
+let lineKeySeq = 0
+function newLineKey() { return ++lineKeySeq }
+function blankLine(): StockLine { return { partName: '', partCode: '', quantity: '1', unitPrice: '' } }
+
+// POSTing to spare-parts-stock (not the order-placement /spare-parts
+// endpoint) is what makes this an inventory top-up: that endpoint upserts by
+// part name, incrementing quantityOnHand on an existing row instead of
+// creating a duplicate — see dealerPortal.controller.ts#upsertDealerSparePart.
+async function saveStockLines(lines: { key: number; line: StockLine }[]): Promise<string[]> {
+  const failures: string[] = []
+  for (const { line } of lines) {
+    if (!line.partName.trim() || !(Number(line.quantity) > 0)) continue
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts-stock', {
+      method: 'POST',
+      body: JSON.stringify({ partName: line.partName.trim(), partCode: line.partCode.trim() || undefined, quantity: line.quantity, unitPrice: line.unitPrice || undefined }),
+    })
+    if (!ok) failures.push(`${line.partName}: ${data.message ?? 'failed'}`)
+  }
+  return failures
+}
+
+function StockLineRow({ line, onChange, onRemove, removable }: { line: StockLine; onChange: (patch: Partial<StockLine>) => void; onRemove: () => void; removable: boolean }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end">
+      <Input label="Part name" placeholder="e.g. Brake Pad Set" value={line.partName} onChange={(e) => onChange({ partName: e.target.value })} required />
+      <Input label="Part code (optional)" value={line.partCode} onChange={(e) => onChange({ partCode: e.target.value })} />
+      <Input label="Quantity" type="number" min={1} value={line.quantity} onChange={(e) => onChange({ quantity: e.target.value })} required />
+      <Input label="Unit price, ₹" type="number" value={line.unitPrice} onChange={(e) => onChange({ unitPrice: e.target.value })} />
+      {removable && (
+        <button onClick={onRemove} className="mb-0.5 flex h-9 w-9 items-center justify-center rounded-md text-ink/30 hover:bg-red-50 hover:text-red-500" aria-label="Remove line">
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function AddManualStockForm({ onDone }: { onDone: () => void }) {
+  const [lines, setLines] = useState<{ key: number; line: StockLine }[]>(() => [{ key: newLineKey(), line: blankLine() }])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  function updateLine(key: number, patch: Partial<StockLine>) {
+    setLines((prev) => prev.map((l) => l.key === key ? { ...l, line: { ...l.line, ...patch } } : l))
+  }
+  function addLine() {
+    setLines((prev) => [...prev, { key: newLineKey(), line: blankLine() }])
+  }
+  function removeLine(key: number) {
+    setLines((prev) => prev.filter((l) => l.key !== key))
+  }
+
+  const validLines = lines.filter((l) => l.line.partName.trim() && Number(l.line.quantity) > 0)
+
   const submit = async () => {
+    if (validLines.length === 0) return
     setSaving(true)
     setError(null)
-    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts-stock', {
-      method: 'POST',
-      body: JSON.stringify({ partName, partCode: partCode || undefined, quantity, unitPrice: unitPrice || undefined }),
-    })
+    const failures = await saveStockLines(validLines)
     setSaving(false)
-    if (!ok) { setError(data.message ?? 'Could not add part'); return }
+    if (failures.length > 0) { setError(failures.join('; ')); return }
     onDone()
   }
 
-  const valid = partName && Number(quantity) > 0
+  const partSummary = validLines.map(({ line }) => line.partName.trim()).filter(Boolean).join(', ')
+  const totalQuantity = validLines.reduce((sum, { line }) => sum + (Number(line.quantity) || 0), 0)
 
   return (
     <FormShell
-      title="Add / restock part"
-      description="Adding a part that already exists tops up its quantity instead of creating a duplicate."
+      title="Add stock manually"
+      description="Adding a part that already exists tops up its quantity instead of creating a duplicate. Add as many parts as you like in one go."
       summary={[
-        { label: 'Part name', value: partName },
-        { label: 'Part code', value: partCode },
-        { label: 'Quantity', value: quantity },
-        { label: 'Unit price', value: unitPrice ? money(unitPrice) : undefined },
+        { label: 'Parts', value: validLines.length || '—' },
+        { label: 'Name(s)', value: partSummary },
+        { label: 'Total quantity', value: totalQuantity || '—' },
       ]}
       onSubmit={submit}
-      submitLabel="Save"
+      submitLabel={`Save${validLines.length > 1 ? ` (${validLines.length} parts)` : ''}`}
       submitting={saving}
-      submitDisabled={!valid}
+      submitDisabled={validLines.length === 0}
       error={error}
     >
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Input label="Part name" value={partName} onChange={(e) => setPartName(e.target.value)} required />
-        <Input label="Part code (optional)" value={partCode} onChange={(e) => setPartCode(e.target.value)} />
-        <Input label="Quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
-        <Input label="Unit price, ₹" type="number" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
+      <div className="space-y-3">
+        {lines.map(({ key, line }) => (
+          <StockLineRow key={key} line={line} onChange={(patch) => updateLine(key, patch)} onRemove={() => removeLine(key)} removable={lines.length > 1} />
+        ))}
       </div>
+      <button onClick={addLine} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
+        <Plus className="h-3.5 w-3.5" /> Add another part
+      </button>
     </FormShell>
+  )
+}
+
+type OcrPreview = { ocrExtractedText: string | null; ocrStatus: 'DONE' | 'FAILED' | 'SKIPPED'; items: { partName: string; quantity: number; unitPrice: string }[] }
+
+function ScanBillForm({ onDone }: { onDone: () => void }) {
+  const [uploading, setUploading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [preview, setPreview] = useState<OcrPreview | null>(null)
+  const [lines, setLines] = useState<{ key: number; line: StockLine }[]>([])
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  async function handleFile(files: FileList | null) {
+    const file = files?.[0]
+    if (!file) return
+    setUploading(true)
+    setPreviewError(null)
+    setImageUrl(URL.createObjectURL(file))
+    const formData = new FormData()
+    formData.append('file', file)
+    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts-stock/ocr-preview', { method: 'POST', body: formData })
+    setUploading(false)
+    if (!ok) { setPreviewError(data.message ?? 'Could not scan bill'); return }
+    setPreview(data)
+    const items: OcrPreview['items'] = data.items ?? []
+    setLines(
+      items.length > 0
+        ? items.map((it) => ({ key: newLineKey(), line: { partName: it.partName, partCode: '', quantity: String(it.quantity), unitPrice: it.unitPrice } }))
+        : [{ key: newLineKey(), line: blankLine() }]
+    )
+  }
+
+  function updateLine(key: number, patch: Partial<StockLine>) {
+    setLines((prev) => prev.map((l) => l.key === key ? { ...l, line: { ...l.line, ...patch } } : l))
+  }
+  function addLine() {
+    setLines((prev) => [...prev, { key: newLineKey(), line: blankLine() }])
+  }
+  function removeLine(key: number) {
+    setLines((prev) => prev.filter((l) => l.key !== key))
+  }
+
+  const validLines = lines.filter((l) => l.line.partName.trim() && Number(l.line.quantity) > 0)
+
+  const startOver = () => {
+    setPreview(null)
+    setImageUrl(null)
+    setLines([])
+  }
+
+  const submit = async () => {
+    if (validLines.length === 0) return
+    setSaving(true)
+    setSaveError(null)
+    const failures = await saveStockLines(validLines)
+    setSaving(false)
+    if (failures.length > 0) { setSaveError(failures.join('; ')); return }
+    onDone()
+  }
+
+  if (!preview) {
+    return (
+      <Card className="mb-6">
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink/15 py-10 text-center hover:border-slate/40">
+          {uploading ? <Loader2 className="h-6 w-6 animate-spin text-slate" /> : <Upload className="h-6 w-6 text-ink/30" />}
+          <span className="text-sm font-medium text-ink/70">{uploading ? 'Scanning bill…' : 'Upload a photo of the purchase bill'}</span>
+          <span className="text-xs text-ink/40">Quantity and price get pulled out automatically as a first guess — you'll review every line before it's added to stock</span>
+          <input type="file" accept=".jpg,.jpeg,.png" className="hidden" disabled={uploading} onChange={(e) => handleFile(e.target.files)} />
+        </label>
+        {previewError && <p className="mt-2 text-xs text-red-500">{previewError}</p>}
+      </Card>
+    )
+  }
+
+  const partSummary = validLines.map(({ line }) => line.partName.trim()).filter(Boolean).join(', ')
+  const totalQuantity = validLines.reduce((sum, { line }) => sum + (Number(line.quantity) || 0), 0)
+
+  return (
+    <div className="mb-6">
+      <FormShell
+        title="Confirm scanned stock"
+        description={preview.items.length > 0
+          ? 'Best-effort read from the bill photo — check every line (especially quantity and price) before adding it to stock.'
+          : "Couldn't confidently read any line items from this bill — enter them below using the extracted text as a reference."}
+        summary={[
+          { label: 'Parts', value: validLines.length || '—' },
+          { label: 'Name(s)', value: partSummary },
+          { label: 'Total quantity', value: totalQuantity || '—' },
+        ]}
+        onSubmit={submit}
+        onCancel={startOver}
+        submitLabel={`Add to stock${validLines.length > 1 ? ` (${validLines.length} parts)` : ''}`}
+        submitting={saving}
+        submitDisabled={validLines.length === 0}
+        error={saveError}
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink/40">Uploaded bill</p>
+            {imageUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={imageUrl} alt="Uploaded bill" className="max-h-64 w-full rounded-lg border border-ink/[0.08] object-contain" />
+            )}
+          </div>
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink/40">
+              Extracted text {preview.ocrStatus === 'FAILED' && '(scan failed)'}
+            </p>
+            <textarea
+              readOnly
+              value={preview.ocrExtractedText ?? ''}
+              placeholder="No text extracted"
+              rows={9}
+              className="w-full rounded-lg border border-ink/[0.08] bg-brand-white px-3 py-2 text-xs text-ink/60"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {lines.map(({ key, line }) => (
+            <StockLineRow key={key} line={line} onChange={(patch) => updateLine(key, patch)} onRemove={() => removeLine(key)} removable={lines.length > 1} />
+          ))}
+        </div>
+        <button onClick={addLine} className="mt-1 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
+          <Plus className="h-3.5 w-3.5" /> Add another part
+        </button>
+      </FormShell>
+    </div>
   )
 }
