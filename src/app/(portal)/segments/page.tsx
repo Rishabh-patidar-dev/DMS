@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { FormShell } from '@/components/portal/FormShell'
 
 const STATUS_OPTIONS = ['OPEN', 'WORKING', 'QUALIFIED', 'UNQUALIFIED', 'NURTURING', 'CONVERTED']
 const SOURCE_OPTIONS = ['IMPORT', 'LANDING_PAGE', 'MANUAL']
@@ -134,19 +135,30 @@ function NewSegmentForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <Card className="mb-6">
-      <h3 className="mb-3 text-sm font-semibold text-ink">New segment</h3>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Input placeholder="Segment name" value={name} onChange={(e) => setName(e.target.value)} className="md:col-span-2" />
-        <Input placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} className="md:col-span-3" />
-        <Select placeholder="Any status" options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} />
-        <Select placeholder="Any source" options={SOURCE_OPTIONS.map((s) => ({ value: s, label: s.replace('_', ' ') }))} value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} />
-        <Input placeholder="State (optional)" value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} />
-      </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!name || saving} loading={saving} onClick={submit}>
-        Create segment
-      </Button>
-    </Card>
+    <div className="mb-6">
+      <FormShell
+        title="New segment"
+        description="A saved filter over your leads — used as the audience for your campaigns."
+        summary={[
+          { label: 'Name', value: name },
+          { label: 'Status', value: statusFilter || 'Any' },
+          { label: 'Source', value: sourceFilter ? sourceFilter.replace('_', ' ') : 'Any' },
+          { label: 'State', value: stateFilter || 'Any' },
+        ]}
+        onSubmit={submit}
+        submitLabel="Create segment"
+        submitting={saving}
+        submitDisabled={!name}
+        error={error}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Segment name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input label="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Select label="Status" placeholder="Any status" options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} />
+          <Select label="Source" placeholder="Any source" options={SOURCE_OPTIONS.map((s) => ({ value: s, label: s.replace('_', ' ') }))} value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} />
+          <Input label="State (optional)" value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} />
+        </div>
+      </FormShell>
+    </div>
   )
 }

@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, PackagePlus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search } from 'lucide-react'
+import { Loader2, Plus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { FormShell } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type SparePart = {
@@ -195,18 +196,27 @@ function NewPartForm({ onDone }: { onDone: () => void }) {
   const valid = partName && Number(quantity) > 0
 
   return (
-    <Card className="mb-4">
-      <p className="mb-3 text-xs text-ink/50">Adding a part that already exists tops up its quantity instead of creating a duplicate.</p>
+    <FormShell
+      title="Add / restock part"
+      description="Adding a part that already exists tops up its quantity instead of creating a duplicate."
+      summary={[
+        { label: 'Part name', value: partName },
+        { label: 'Part code', value: partCode },
+        { label: 'Quantity', value: quantity },
+        { label: 'Unit price', value: unitPrice ? money(unitPrice) : undefined },
+      ]}
+      onSubmit={submit}
+      submitLabel="Save"
+      submitting={saving}
+      submitDisabled={!valid}
+      error={error}
+    >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Input label="Part name" value={partName} onChange={(e) => setPartName(e.target.value)} required />
         <Input label="Part code (optional)" value={partCode} onChange={(e) => setPartCode(e.target.value)} />
         <Input label="Quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
         <Input label="Unit price, ₹" type="number" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
-        <PackagePlus className="h-4 w-4" /> Save
-      </Button>
-    </Card>
+    </FormShell>
   )
 }

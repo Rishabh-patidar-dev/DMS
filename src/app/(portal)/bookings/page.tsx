@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { FormShell } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type CatalogItem = { model: string; segment: string }
@@ -118,7 +119,11 @@ export default function BookingsPage() {
         </Button>
       </div>
 
-      {showForm && <NewBookingForm onDone={() => { setShowForm(false); load() }} />}
+      {showForm && (
+        <div className="mb-4">
+          <NewBookingForm onDone={() => { setShowForm(false); load() }} />
+        </div>
+      )}
 
       <div className="space-y-3">
         {loading ? (
@@ -252,6 +257,8 @@ function NewBookingForm({ onDone }: { onDone: () => void }) {
   }, [])
 
   const catalogOptions = catalog.map((c) => ({ value: `${c.model}|${c.segment}`, label: `${c.model} (${c.segment})` }))
+  const selectedModel = selected.split('|')[0] || undefined
+  const paymentModeLabel = PAYMENT_MODES.find((p) => p.value === paymentMode)?.label ?? paymentMode
 
   const submit = async () => {
     const [model, segment] = selected.split('|')
@@ -274,7 +281,22 @@ function NewBookingForm({ onDone }: { onDone: () => void }) {
   const valid = customerName && customerPhone && selected && bookingAmount
 
   return (
-    <Card className="mb-4">
+    <FormShell
+      title="New booking"
+      description="Take the token booking now — allocating a specific vehicle unit happens later, once one's ready in stock."
+      summary={[
+        { label: 'Customer', value: customerName },
+        { label: 'Vehicle', value: selectedModel },
+        { label: 'Booking amount', value: bookingAmount ? `₹${Number(bookingAmount).toLocaleString('en-IN')}` : undefined },
+        { label: 'Payment mode', value: paymentModeLabel },
+      ]}
+      tip="A specific VIN gets allocated to this booking later, from the booking's card, once a matching unit is in your stock — you don't need one on hand yet."
+      onSubmit={submit}
+      submitLabel="Create booking"
+      submitting={saving}
+      submitDisabled={!valid}
+      error={error}
+    >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
         <Input label="Customer phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
@@ -286,10 +308,6 @@ function NewBookingForm({ onDone }: { onDone: () => void }) {
         <Input label="Expected delivery (optional)" type="date" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} />
         <Input label="Address (optional)" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
-        Create booking
-      </Button>
-    </Card>
+    </FormShell>
   )
 }

@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { FormShell, FieldLabel } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type PartUsage = { id: number; partName: string; quantityUsed: number; unitPrice: string; usedAt: string }
@@ -166,33 +167,45 @@ function NewTicketForm({ onDone }: { onDone: () => void }) {
     onDone()
   }
 
-  const valid = customerName && chassisNumber && issue
+  const valid = !!(customerName && chassisNumber && issue)
+  const priorityLabel = PRIORITIES.find((p) => p.value === priority)?.label ?? priority
 
   return (
-    <Card>
-      <p className="mb-3 text-xs text-ink/50">Just the essentials at intake — what parts it'll take is figured out once servicing starts.</p>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <FormShell
+      title="Check in a vehicle"
+      description="Just the essentials at intake — what parts it'll take is figured out once servicing starts."
+      summary={[
+        { label: 'Vehicle number', value: chassisNumber },
+        { label: 'Customer', value: customerName },
+        { label: 'Model', value: vehicleModel },
+        { label: 'Priority', value: priorityLabel },
+      ]}
+      tip="Parts used, cost, and resolution are all logged later, once servicing actually starts — this step is just the intake record."
+      onSubmit={submit}
+      submitLabel="Check in"
+      submitting={saving}
+      submitDisabled={!valid}
+      error={error}
+    >
+      <div className="grid grid-cols-2 gap-3">
         <Input label="Vehicle number" value={chassisNumber} onChange={(e) => setChassisNumber(e.target.value)} required />
         <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
         <Input label="Customer phone (optional)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
         <Input label="Vehicle model (optional)" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} />
         <Select label="Priority" options={PRIORITIES} value={priority} onChange={(e) => setPriority(e.target.value)} />
       </div>
-      <div className="mt-3">
-        <label htmlFor="issue" className="mb-1.5 block text-sm font-medium text-ink/70">Issue</label>
+      <div>
+        <FieldLabel>Issue</FieldLabel>
         <textarea
           id="issue"
           value={issue}
           onChange={(e) => setIssue(e.target.value)}
-          rows={2}
-          className="w-full rounded-md border border-ink/10 bg-brand-white px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-slate/40"
+          rows={3}
+          placeholder="What's wrong with the vehicle?"
+          className="w-full rounded-xl border-2 border-transparent bg-sand/[0.07] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:border-accent focus:bg-white focus:outline-none"
         />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!valid || saving} loading={saving} onClick={submit}>
-        Check in
-      </Button>
-    </Card>
+    </FormShell>
   )
 }
 

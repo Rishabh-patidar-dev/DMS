@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { FormShell, SummaryRow } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type BillableBooking = {
@@ -542,62 +543,89 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
     ? (!!laborCharge && (!isManual || (customerName && customerPhone && model)))
     : (!!exShowroomPrice && (booking || (customerName && customerPhone && model)))
 
+  const title = isManual
+    ? (isService ? 'Manual service bill' : 'Manual vehicle sale bill')
+    : (isService ? 'Generate service bill' : 'Generate vehicle sale bill')
+
+  const summary: SummaryRow[] = [
+    ...(booking
+      ? [
+          { label: 'Booking', value: booking.bookingNumber },
+          { label: 'Customer', value: booking.customerName },
+          { label: 'Vehicle', value: booking.vehicleUnit ? `${booking.model} · ${booking.vehicleUnit.vin}` : booking.model },
+        ]
+      : serviceTicket
+      ? [
+          { label: 'Ticket', value: serviceTicket.ticketNumber },
+          { label: 'Customer', value: serviceTicket.customerName },
+          { label: 'Vehicle', value: serviceTicket.chassisNumber ?? '—' },
+        ]
+      : [
+          { label: 'Customer', value: customerName },
+          { label: 'Model', value: model },
+        ]),
+    ...(isService && partsAmount > 0 ? [{ label: 'Parts used', value: money(partsAmount) }] : []),
+    { label: 'Taxable amount', value: money(taxable) },
+    { label: `GST (${gstRate || 0}%)`, value: money(gst) },
+    { label: 'Total', value: money(total) },
+  ]
+
   return (
-    <Card className="mb-4">
-      {booking ? (
-        <p className="mb-3 text-sm text-ink/70">Billing <span className="font-medium text-ink">{booking.customerName}</span> for {booking.model}{booking.vehicleUnit ? ` (${booking.vehicleUnit.vin})` : ''} — booking {booking.bookingNumber}</p>
-      ) : serviceTicket ? (
-        <div className="mb-3">
-          <p className="text-sm text-ink/70">Billing <span className="font-medium text-ink">{serviceTicket.customerName}</span> for {serviceTicket.chassisNumber} — ticket {serviceTicket.ticketNumber}</p>
-          {serviceTicket.partsUsed.length > 0 && (
-            <ul className="mt-2 space-y-0.5 rounded-xl bg-canvas p-2.5 text-xs text-ink/60">
-              {serviceTicket.partsUsed.map((p) => (
-                <li key={p.id} className="flex justify-between"><span>{p.partName} × {p.quantityUsed}</span><span>{money(Number(p.unitPrice) * p.quantityUsed)}</span></li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : (
-        <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-          <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
-          <Input label="Customer phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
-          <Input label="Vehicle model" value={model} onChange={(e) => setModel(e.target.value)} required />
-          <Input label="VIN / vehicle number (optional)" value={vin} onChange={(e) => setVin(e.target.value)} />
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {isService ? (
-          <>
-            <Input label="Labor charge, ₹" type="number" value={laborCharge} onChange={(e) => setLaborCharge(e.target.value)} required />
-            {manualService && <Input label="Spare parts used, ₹ (optional)" type="number" value={manualPartsAmount} onChange={(e) => setManualPartsAmount(e.target.value)} />}
-          </>
+    <div className="mb-4">
+      <FormShell
+        title={title}
+        description="Review the details below and fill in the charges — the taxable amount, GST, and total update live in the summary."
+        summary={summary}
+        tip={`Bills with a taxable value over ₹${EWAY_BILL_THRESHOLD.toLocaleString('en-IN')} will need an e-way bill for transport — you can generate that once the bill is issued.`}
+        onSubmit={submit}
+        onCancel={onCancel}
+        submitLabel="Issue bill"
+        submitting={saving}
+        submitDisabled={!valid}
+        error={error}
+      >
+        {booking ? (
+          <p className="text-sm text-ink/70">Billing <span className="font-medium text-ink">{booking.customerName}</span> for {booking.model}{booking.vehicleUnit ? ` (${booking.vehicleUnit.vin})` : ''} — booking {booking.bookingNumber}</p>
+        ) : serviceTicket ? (
+          <div>
+            <p className="text-sm text-ink/70">Billing <span className="font-medium text-ink">{serviceTicket.customerName}</span> for {serviceTicket.chassisNumber} — ticket {serviceTicket.ticketNumber}</p>
+            {serviceTicket.partsUsed.length > 0 && (
+              <ul className="mt-2 space-y-0.5 rounded-xl bg-canvas p-2.5 text-xs text-ink/60">
+                {serviceTicket.partsUsed.map((p) => (
+                  <li key={p.id} className="flex justify-between"><span>{p.partName} × {p.quantityUsed}</span><span>{money(Number(p.unitPrice) * p.quantityUsed)}</span></li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
-          <>
-            <Input label="Ex-showroom price, ₹" type="number" value={exShowroomPrice} onChange={(e) => setExShowroomPrice(e.target.value)} required />
-            <Input label="Accessories, ₹ (optional)" type="number" value={accessoriesAmount} onChange={(e) => setAccessoriesAmount(e.target.value)} />
-            <Input label="Registration, ₹ (optional)" type="number" value={registrationAmount} onChange={(e) => setRegistrationAmount(e.target.value)} />
-            <Input label="Insurance, ₹ (optional)" type="number" value={insuranceAmount} onChange={(e) => setInsuranceAmount(e.target.value)} />
-          </>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+            <Input label="Customer phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
+            <Input label="Vehicle model" value={model} onChange={(e) => setModel(e.target.value)} required />
+            <Input label="VIN / vehicle number (optional)" value={vin} onChange={(e) => setVin(e.target.value)} />
+          </div>
         )}
-        <Input label="Discount, ₹ (optional)" type="number" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} />
-        <Input label="GST rate, %" type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} />
-        <Select label="Payment mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={PAYMENT_MODES} />
-        <Input label="Address (optional)" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
-      </div>
 
-      <Card padding="compact" className="mt-3 text-sm">
-        {isService && partsAmount > 0 && <div className="flex justify-between text-ink/60"><span>Spare parts used</span><span>{money(partsAmount)}</span></div>}
-        <div className="flex justify-between text-ink/60"><span>Taxable amount</span><span>{money(taxable)}</span></div>
-        <div className="flex justify-between text-ink/60"><span>GST ({gstRate || 0}%)</span><span>{money(gst)}</span></div>
-        <div className="mt-1 flex justify-between border-t border-ink/[0.08] pt-1 font-semibold text-ink"><span>Total</span><span>{money(total)}</span></div>
-      </Card>
-
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" disabled={!valid || saving} loading={saving} onClick={submit}>Issue bill</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
-      </div>
-    </Card>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {isService ? (
+            <>
+              <Input label="Labor charge, ₹" type="number" value={laborCharge} onChange={(e) => setLaborCharge(e.target.value)} required />
+              {manualService && <Input label="Spare parts used, ₹ (optional)" type="number" value={manualPartsAmount} onChange={(e) => setManualPartsAmount(e.target.value)} />}
+            </>
+          ) : (
+            <>
+              <Input label="Ex-showroom price, ₹" type="number" value={exShowroomPrice} onChange={(e) => setExShowroomPrice(e.target.value)} required />
+              <Input label="Accessories, ₹ (optional)" type="number" value={accessoriesAmount} onChange={(e) => setAccessoriesAmount(e.target.value)} />
+              <Input label="Registration, ₹ (optional)" type="number" value={registrationAmount} onChange={(e) => setRegistrationAmount(e.target.value)} />
+              <Input label="Insurance, ₹ (optional)" type="number" value={insuranceAmount} onChange={(e) => setInsuranceAmount(e.target.value)} />
+            </>
+          )}
+          <Input label="Discount, ₹ (optional)" type="number" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} />
+          <Input label="GST rate, %" type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)} />
+          <Select label="Payment mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={PAYMENT_MODES} />
+          <Input label="Address (optional)" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+        </div>
+      </FormShell>
+    </div>
   )
 }

@@ -11,7 +11,7 @@ import { Plus, X } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { Button } from '@/components/ui/Button'
+import { FormShell } from '@/components/portal/FormShell'
 
 type CatalogItem = { model: string; segment: string; application: string }
 
@@ -75,8 +75,27 @@ export function VehicleOrderForm({ onDone }: { onDone: () => void }) {
     onDone()
   }
 
+  const modelSummary = validLines
+    .map(({ line }) => line.selected.split('|')[0])
+    .filter(Boolean)
+    .join(', ')
+  const totalQuantity = validLines.reduce((sum, { line }) => sum + (Number(line.quantity) || 0), 0)
+
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-card p-4">
+    <FormShell
+      title="Order vehicles"
+      description="Add one or more vehicles from the manufacturer's catalog to this order."
+      summary={[
+        { label: 'Vehicles', value: validLines.length || '—' },
+        { label: 'Model(s)', value: modelSummary },
+        { label: 'Total quantity', value: totalQuantity || '—' },
+      ]}
+      onSubmit={submit}
+      submitLabel={`Place order${validLines.length > 1 ? ` (${validLines.length} vehicles)` : ''}`}
+      submitting={saving}
+      submitDisabled={validLines.length === 0}
+      error={error}
+    >
       <div className="space-y-3">
         {lines.map(({ key, line }) => (
           <div key={key} className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
@@ -101,11 +120,7 @@ export function VehicleOrderForm({ onDone }: { onDone: () => void }) {
       <button onClick={addLine} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
         <Plus className="h-3.5 w-3.5" /> Add another vehicle
       </button>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={validLines.length === 0 || saving} loading={saving} onClick={submit}>
-        Place order{validLines.length > 1 ? ` (${validLines.length} vehicles)` : ''}
-      </Button>
-    </div>
+    </FormShell>
   )
 }
 
@@ -147,8 +162,24 @@ export function SparePartOrderForm({ onDone }: { onDone: () => void }) {
     onDone()
   }
 
+  const partSummary = validLines.map(({ line }) => line.partName.trim()).filter(Boolean).join(', ')
+  const totalQuantity = validLines.reduce((sum, { line }) => sum + (Number(line.quantity) || 0), 0)
+
   return (
-    <div className="mb-4 rounded-xl border border-ink/[0.08] bg-card p-4">
+    <FormShell
+      title="Order spare parts"
+      description="Add one or more spare parts to this order."
+      summary={[
+        { label: 'Parts', value: validLines.length || '—' },
+        { label: 'Name(s)', value: partSummary },
+        { label: 'Total quantity', value: totalQuantity || '—' },
+      ]}
+      onSubmit={submit}
+      submitLabel={`Place order${validLines.length > 1 ? ` (${validLines.length} parts)` : ''}`}
+      submitting={saving}
+      submitDisabled={validLines.length === 0}
+      error={error}
+    >
       <div className="space-y-3">
         {lines.map(({ key, line }) => (
           <div key={key} className="grid grid-cols-2 gap-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
@@ -166,10 +197,6 @@ export function SparePartOrderForm({ onDone }: { onDone: () => void }) {
       <button onClick={addLine} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-slate hover:underline">
         <Plus className="h-3.5 w-3.5" /> Add another part
       </button>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={validLines.length === 0 || saving} loading={saving} onClick={submit}>
-        Place order{validLines.length > 1 ? ` (${validLines.length} parts)` : ''}
-      </Button>
-    </div>
+    </FormShell>
   )
 }

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
+import { FormShell, FieldLabel } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 type Claim = {
@@ -203,17 +204,35 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
     )
   }
 
+  const selectedComponent = coverage?.components?.find((c: any) => String(c.id) === componentUnitId)
+  const valid = !!(customerName && issueDescription)
+
   return (
-    <Card>
-      <div className="mb-4 flex gap-2">
+    <FormShell
+      title="Raise a warranty claim"
+      description="Check coverage on a VIN, then log the issue — the claim is auto-adjudicated the moment you submit."
+      summary={[
+        { label: 'VIN', value: coverage?.vehicle?.vin ?? (vin || undefined) },
+        { label: 'Component', value: selectedComponent?.componentType },
+        { label: 'Customer', value: customerName },
+        { label: 'Odometer', value: odometerReading ? `${odometerReading} km` : undefined },
+      ]}
+      tip="Coverage is checked automatically and the claim is auto-adjudicated the instant you submit — there's no separate manual review step here."
+      onSubmit={submit}
+      submitLabel="Submit claim (auto-adjudicated)"
+      submitting={saving}
+      submitDisabled={!valid}
+      error={error}
+    >
+      <div className="flex gap-2">
         <Input placeholder="Enter the vehicle's VIN…" value={vin} onChange={(e) => setVin(e.target.value)} prefix={<Search className="h-4 w-4" />} />
         <Button size="sm" onClick={checkCoverage} loading={checking}>Check coverage</Button>
       </div>
 
-      {coverageError && <p className="mb-3 text-xs text-red-500">{coverageError}</p>}
+      {coverageError && <p className="text-xs text-red-500">{coverageError}</p>}
 
       {coverage && (
-        <div className="mb-4 space-y-2">
+        <div className="space-y-2">
           <p className="text-xs font-medium text-ink/60">{coverage.vehicle.model} · {coverage.vehicle.vin}</p>
           {coverage.components.map((c: any) => (
             <label key={c.id} className="flex items-center justify-between rounded-lg border border-ink/[0.08] px-3 py-2 text-sm cursor-pointer hover:border-slate/40">
@@ -235,20 +254,17 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
         <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
         <Input label="Odometer (km, optional)" type="number" value={odometerReading} onChange={(e) => setOdometerReading(e.target.value)} />
       </div>
-      <div className="mt-3">
-        <label htmlFor="issueDescription" className="mb-1.5 block text-sm font-medium text-ink/70">Issue description</label>
+      <div>
+        <FieldLabel>Issue description</FieldLabel>
         <textarea
           id="issueDescription"
           value={issueDescription}
           onChange={(e) => setIssueDescription(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-ink/10 bg-brand-white px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-slate/40"
+          placeholder="What's the reported issue?"
+          className="w-full rounded-xl border-2 border-transparent bg-sand/[0.07] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:border-accent focus:bg-white focus:outline-none"
         />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!customerName || !issueDescription || saving} loading={saving} onClick={submit}>
-        Submit claim (auto-adjudicated)
-      </Button>
-    </Card>
+    </FormShell>
   )
 }

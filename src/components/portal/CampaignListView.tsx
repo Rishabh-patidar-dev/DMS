@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { FormShell, FieldLabel } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
 export type CampaignChannel = 'EMAIL' | 'WHATSAPP'
@@ -174,33 +175,46 @@ function NewCampaignForm({ channel, segments, onDone }: { channel: CampaignChann
     onDone()
   }
 
+  const segmentLabel = segments.find((s) => String(s.id) === segmentId)?.name
+
   return (
-    <Card>
-      <h3 className="mb-3 text-sm font-semibold text-ink">New {channel === 'EMAIL' ? 'email' : 'WhatsApp'} campaign</h3>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Input placeholder="Campaign name" value={name} onChange={(e) => setName(e.target.value)} />
+    <FormShell
+      title={`New ${channel === 'EMAIL' ? 'email' : 'WhatsApp'} campaign`}
+      summary={[
+        { label: 'Name', value: name },
+        { label: 'Channel', value: channel === 'EMAIL' ? 'Email' : 'WhatsApp' },
+        { label: 'Segment', value: segmentLabel ?? 'TBD' },
+      ]}
+      onSubmit={submit}
+      submitLabel="Create campaign"
+      submitting={saving}
+      submitDisabled={!name || !message}
+      error={error}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Campaign name" value={name} onChange={(e) => setName(e.target.value)} required />
         {channel === 'EMAIL' && (
-          <Input placeholder="Subject line" value={subject} onChange={(e) => setSubject(e.target.value)} className="md:col-span-2" />
+          <Input label="Subject line" value={subject} onChange={(e) => setSubject(e.target.value)} />
         )}
         <Select
+          label="Segment"
           placeholder="No segment (audience TBD)"
           options={segments.map((s) => ({ value: String(s.id), label: `${s.name} · ${s.memberCount} leads` }))}
           value={segmentId}
           onChange={(e) => setSegmentId(e.target.value)}
-          className={channel === 'EMAIL' ? '' : 'md:col-span-3'}
-        />
-        <textarea
-          placeholder={channel === 'EMAIL' ? 'Email body' : 'WhatsApp message'}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          rows={3}
-          className="col-span-2 rounded-xl border border-ink/10 bg-brand-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/30 md:col-span-4"
+          className={channel === 'EMAIL' ? '' : 'col-span-2'}
         />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-      <Button size="sm" className="mt-3" disabled={!name || !message || saving} loading={saving} onClick={submit}>
-        Create campaign
-      </Button>
-    </Card>
+      <div>
+        <FieldLabel>{channel === 'EMAIL' ? 'Email body' : 'WhatsApp message'}</FieldLabel>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={4}
+          placeholder={channel === 'EMAIL' ? 'Email body' : 'WhatsApp message'}
+          className="w-full rounded-xl border-2 border-transparent bg-sand/[0.07] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:border-accent focus:bg-white focus:outline-none"
+        />
+      </div>
+    </FormShell>
   )
 }
