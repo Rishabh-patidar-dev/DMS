@@ -191,13 +191,13 @@ function blankLine(): StockLine { return { partName: '', partCode: '', quantity:
 // endpoint) is what makes this an inventory top-up: that endpoint upserts by
 // part name, incrementing quantityOnHand on an existing row instead of
 // creating a duplicate — see dealerPortal.controller.ts#upsertDealerSparePart.
-async function saveStockLines(lines: { key: number; line: StockLine }[]): Promise<string[]> {
+async function saveStockLines(lines: { key: number; line: StockLine }[], source: 'MANUAL_ADD' | 'SCAN_BILL'): Promise<string[]> {
   const failures: string[] = []
   for (const { line } of lines) {
     if (!line.partName.trim() || !(Number(line.quantity) > 0)) continue
     const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-parts-stock', {
       method: 'POST',
-      body: JSON.stringify({ partName: line.partName.trim(), partCode: line.partCode.trim() || undefined, quantity: line.quantity, unitPrice: line.unitPrice || undefined }),
+      body: JSON.stringify({ partName: line.partName.trim(), partCode: line.partCode.trim() || undefined, quantity: line.quantity, unitPrice: line.unitPrice || undefined, source }),
     })
     if (!ok) failures.push(`${line.partName}: ${data.message ?? 'failed'}`)
   }
@@ -241,7 +241,7 @@ function AddManualStockForm({ onDone }: { onDone: () => void }) {
     if (validLines.length === 0) return
     setSaving(true)
     setError(null)
-    const failures = await saveStockLines(validLines)
+    const failures = await saveStockLines(validLines, 'MANUAL_ADD')
     setSaving(false)
     if (failures.length > 0) { setError(failures.join('; ')); return }
     onDone()
@@ -330,7 +330,7 @@ function ScanBillForm({ onDone }: { onDone: () => void }) {
     if (validLines.length === 0) return
     setSaving(true)
     setSaveError(null)
-    const failures = await saveStockLines(validLines)
+    const failures = await saveStockLines(validLines, 'SCAN_BILL')
     setSaving(false)
     if (failures.length > 0) { setSaveError(failures.join('; ')); return }
     onDone()

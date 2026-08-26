@@ -54,17 +54,17 @@ export function FormShell({
   error?: string | null
 }) {
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[1fr_280px]">
+    <div className="grid items-start gap-6 lg:grid-cols-[1fr_280px]">
       <Card>
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
-        {description && <p className="mt-1 text-xs text-ink/50">{description}</p>}
-        <div className="mt-4 space-y-4">{children}</div>
+        {description && <p className="mt-1.5 text-xs leading-relaxed text-ink/50">{description}</p>}
+        <div className="mt-6 space-y-5">{children}</div>
       </Card>
 
-      <div className="flex flex-col gap-4 lg:sticky lg:top-4">
+      <div className="flex flex-col gap-5 lg:sticky lg:top-4">
         <Card padding="compact" className="!bg-canvas">
           <h4 className="text-[11px] font-semibold uppercase tracking-wide text-ink/40">{summaryTitle}</h4>
-          <dl className="mt-3 space-y-2.5">
+          <dl className="mt-4 space-y-3">
             {summary.map((s) => (
               <div key={s.label} className="flex items-start justify-between gap-3 text-sm">
                 <dt className="shrink-0 text-ink/50">{s.label}</dt>
@@ -75,17 +75,17 @@ export function FormShell({
         </Card>
 
         {tip && (
-          <div className="flex items-start gap-2 rounded-xl bg-mint px-3.5 py-3 text-xs leading-relaxed text-slate">
+          <div className="flex items-start gap-2.5 rounded-xl bg-mint px-4 py-3.5 text-xs leading-relaxed text-slate">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{tip}</span>
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl bg-red-50 px-3.5 py-3 text-xs text-red-600">{error}</div>
+          <div className="rounded-xl bg-red-50 px-4 py-3.5 text-xs leading-relaxed text-red-600">{error}</div>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           <Button onClick={onSubmit} disabled={submitDisabled || submitting} loading={submitting} fullWidth>
             {submitLabel}
           </Button>

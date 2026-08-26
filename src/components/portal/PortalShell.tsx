@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Users, WifiOff,
-  Target, Mail, MessageCircle, FileText, ChevronDown, Menu, X, ShoppingBag, Receipt, PackagePlus, Scan,
+  FileText, ChevronDown, Menu, X, Receipt, PackagePlus,
   Bell,
 } from 'lucide-react'
 import { crmFetch, clearStoredToken } from '@/lib/crm/dealerAuth'
@@ -51,21 +51,20 @@ type NavEntry = ({ kind: 'link' } & NavItem) | { kind: 'group'; id: string; grou
 // directly in the top-level list.
 const NAV: NavEntry[] = [
   { kind: 'link', href: '/', label: 'Overview', icon: LayoutGrid },
+  { kind: 'link', href: '/leads', label: 'Leads', icon: Users },
   {
     kind: 'group',
-    id: 'leads',
-    group: 'Leads',
+    id: 'order-management',
+    group: 'Order Management',
     items: [
-      { href: '/leads', label: 'Leads', icon: Users },
-      { href: '/segments', label: 'Segments', icon: Target },
-      { href: '/campaigns/email', label: 'Email Campaigns', icon: Mail },
-      { href: '/campaigns/whatsapp', label: 'WhatsApp Campaigns', icon: MessageCircle },
+      { href: '/orders', label: 'Create Order', icon: ClipboardList },
     ],
   },
+  { kind: 'link', href: '/invoices', label: 'Invoices', icon: FileText },
   {
     kind: 'group',
     id: 'inventory',
-    group: 'Inventory & Stock',
+    group: 'Inventory',
     items: [
       { href: '/inventory', label: 'My Inventory', icon: Car, exactOnly: true },
       { href: '/inventory/spare-parts', label: 'Spare Parts', icon: PackagePlus },
@@ -73,28 +72,10 @@ const NAV: NavEntry[] = [
   },
   {
     kind: 'group',
-    id: 'order-management',
-    group: 'Order Management',
-    items: [
-      { href: '/orders', label: 'Stock Orders', icon: ClipboardList },
-      { href: '/invoices', label: 'Invoices', icon: FileText },
-      { href: '/purchase-invoices', label: 'Purchase Invoices', icon: Scan },
-    ],
-  },
-  {
-    kind: 'group',
-    id: 'sales-booking',
-    group: 'Sales & Booking',
-    items: [
-      { href: '/bookings', label: 'Bookings', icon: ShoppingBag },
-    ],
-  },
-  {
-    kind: 'group',
     id: 'billing',
     group: 'Billing',
     items: [
-      { href: '/billing', label: 'Customer Bills', icon: Receipt },
+      { href: '/billing', label: 'Customer Billing', icon: Receipt },
     ],
   },
   {
@@ -102,10 +83,10 @@ const NAV: NavEntry[] = [
     id: 'service',
     group: 'Service',
     items: [
-      { href: '/warranty', label: 'Warranty Claims', icon: ShieldCheck },
       { href: '/service', label: 'Service Tickets', icon: Wrench },
     ],
   },
+  { kind: 'link', href: '/warranty', label: 'Warranty Management', icon: ShieldCheck },
 ]
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
@@ -114,7 +95,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'unreachable'>('loading')
   const [signingOut, setSigningOut] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['leads']))
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['order-management', 'inventory']))
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [invoiceUnreadCount, setInvoiceUnreadCount] = useState(0)
 
@@ -216,7 +197,13 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     <nav className="scrollbar-none min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
       {NAV.map((entry) =>
         entry.kind === 'link' ? (
-          <PortalNavLink key={entry.href} {...entry} active={pathname === entry.href} onClick={onNavigate} />
+          <PortalNavLink
+            key={entry.href}
+            {...entry}
+            active={pathname === entry.href}
+            onClick={onNavigate}
+            badgeCount={entry.href === '/invoices' ? invoiceUnreadCount : undefined}
+          />
         ) : (
           <div key={entry.id} className="mb-1 mt-2 first:mt-0">
             <button

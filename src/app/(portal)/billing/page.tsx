@@ -12,14 +12,6 @@ import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
 import { FormShell, SummaryRow } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
 
-type BillableBooking = {
-  id: number
-  bookingNumber: string
-  customerName: string
-  customerPhone: string
-  model: string
-  vehicleUnit: { id: number; vin: string; model: string } | null
-}
 type BillableServiceTicket = {
   id: number
   ticketNumber: string
@@ -98,13 +90,12 @@ const EWAY_BILL_THRESHOLD = 50000
 
 const money = (v: string | number) => `₹${Number(v).toLocaleString('en-IN')}`
 
-type FormTarget = 'none' | { kind: 'manual-vehicle' } | { kind: 'manual-service' } | { kind: 'booking'; id: number } | { kind: 'service'; id: number }
+type FormTarget = 'none' | { kind: 'manual-vehicle' } | { kind: 'manual-service' } | { kind: 'service'; id: number }
 type Tab = 'vehicle' | 'service'
 
 export default function BillingPage() {
   const deepLinkQ = useDeepLinkQuery()
   const [bills, setBills] = useState<Bill[]>([])
-  const [billable, setBillable] = useState<BillableBooking[]>([])
   const [billableService, setBillableService] = useState<BillableServiceTicket[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -116,16 +107,13 @@ export default function BillingPage() {
   const load = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
-    const [b, bb, bs] = await Promise.all([
+    const [b, bs] = await Promise.all([
       crmFetch('/api/v1/dealer-portal/bills'),
-      crmFetch('/api/v1/dealer-portal/billable-bookings'),
       crmFetch('/api/v1/dealer-portal/billable-service-tickets'),
     ])
     const errors: string[] = []
     if (b.ok) setBills(b.data.bills ?? [])
     else errors.push(b.data.message ?? 'Could not load bills')
-    if (bb.ok) setBillable(bb.data.bookings ?? [])
-    else errors.push(bb.data.message ?? 'Could not load bookings awaiting a bill')
     if (bs.ok) setBillableService(bs.data.tickets ?? [])
     else errors.push(bs.data.message ?? 'Could not load service tickets awaiting a bill')
     if (errors.length) {
@@ -151,7 +139,6 @@ export default function BillingPage() {
   const totalCollected = tabBills.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.amountPaid), 0)
   const outstanding = totalBilled - totalCollected
 
-  const activeBooking = typeof showForm === 'object' && showForm.kind === 'booking' ? billable.find((b) => b.id === showForm.id) ?? null : null
   const activeServiceTicket = typeof showForm === 'object' && showForm.kind === 'service' ? billableService.find((t) => t.id === showForm.id) ?? null : null
   const manualServiceMode = typeof showForm === 'object' && showForm.kind === 'manual-service'
 
@@ -185,24 +172,6 @@ export default function BillingPage() {
         <StatTile icon={CheckCircle2} label="Collected" value={money(totalCollected)} />
         <StatTile icon={AlertCircle} label="Outstanding" value={money(outstanding)} />
       </div>
-
-      {tab === 'vehicle' && billable.length > 0 && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-ink">Delivered bookings awaiting a bill</h3>
-          <div className="space-y-2">
-            {billable.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-card px-3.5 py-2.5 text-sm">
-                <div>
-                  <span className="font-mono text-xs text-ink/50">{b.bookingNumber}</span>
-                  <span className="ml-2 font-medium text-ink">{b.customerName}</span>
-                  <span className="ml-2 text-ink/50">{b.model}{b.vehicleUnit ? ` · ${b.vehicleUnit.vin}` : ''}</span>
-                </div>
-                <Button size="sm" onClick={() => setShowForm({ kind: 'booking', id: b.id })}>Generate bill</Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {tab === 'service' && billableService.length > 0 && (
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
@@ -252,7 +221,6 @@ export default function BillingPage() {
 
       {showForm !== 'none' && (
         <BillForm
-          booking={activeBooking}
           serviceTicket={activeServiceTicket}
           manualService={manualServiceMode}
           onDone={() => { setShowForm('none'); load() }}
@@ -480,20 +448,19 @@ function EwayBillPanel({ bill, onChanged }: { bill: Bill; onChanged: () => void 
   )
 }
 
-function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
-  booking: BillableBooking | null
+function BillForm({ serviceTicket, manualService, onDone, onCancel }: {
   serviceTicket: BillableServiceTicket | null
   manualService: boolean
   onDone: () => void
   onCancel: () => void
 }) {
   const isService = serviceTicket != null || manualService
-  const isManual = booking == null && serviceTicket == null
-  const [customerName, setCustomerName] = useState(booking?.customerName ?? serviceTicket?.customerName ?? '')
-  const [customerPhone, setCustomerPhone] = useState(booking?.customerPhone ?? serviceTicket?.customerPhone ?? '')
+  const isManual = serviceTicket == null
+  const [customerName, setCustomerName] = useState(serviceTicket?.customerName ?? '')
+  const [customerPhone, setCustomerPhone] = useState(serviceTicket?.customerPhone ?? '')
   const [customerAddress, setCustomerAddress] = useState('')
-  const [model, setModel] = useState(booking?.model ?? serviceTicket?.vehicleModel ?? '')
-  const [vin, setVin] = useState(booking?.vehicleUnit?.vin ?? serviceTicket?.chassisNumber ?? '')
+  const [model, setModel] = useState(serviceTicket?.vehicleModel ?? '')
+  const [vin, setVin] = useState(serviceTicket?.chassisNumber ?? '')
   const [exShowroomPrice, setExShowroomPrice] = useState('')
   const [accessoriesAmount, setAccessoriesAmount] = useState('')
   const [registrationAmount, setRegistrationAmount] = useState('')
@@ -519,7 +486,6 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
     const { ok, data } = await crmFetch('/api/v1/dealer-portal/bills', {
       method: 'POST',
       body: JSON.stringify({
-        bookingId: booking?.id,
         serviceTicketId: serviceTicket?.id,
         billType: manualService ? 'SERVICE' : undefined,
         customerName: isManual ? customerName : undefined,
@@ -541,20 +507,14 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
 
   const valid = isService
     ? (!!laborCharge && (!isManual || (customerName && customerPhone && model)))
-    : (!!exShowroomPrice && (booking || (customerName && customerPhone && model)))
+    : (!!exShowroomPrice && customerName && customerPhone && model)
 
   const title = isManual
     ? (isService ? 'Manual service bill' : 'Manual vehicle sale bill')
-    : (isService ? 'Generate service bill' : 'Generate vehicle sale bill')
+    : 'Generate service bill'
 
   const summary: SummaryRow[] = [
-    ...(booking
-      ? [
-          { label: 'Booking', value: booking.bookingNumber },
-          { label: 'Customer', value: booking.customerName },
-          { label: 'Vehicle', value: booking.vehicleUnit ? `${booking.model} · ${booking.vehicleUnit.vin}` : booking.model },
-        ]
-      : serviceTicket
+    ...(serviceTicket
       ? [
           { label: 'Ticket', value: serviceTicket.ticketNumber },
           { label: 'Customer', value: serviceTicket.customerName },
@@ -584,9 +544,7 @@ function BillForm({ booking, serviceTicket, manualService, onDone, onCancel }: {
         submitDisabled={!valid}
         error={error}
       >
-        {booking ? (
-          <p className="text-sm text-ink/70">Billing <span className="font-medium text-ink">{booking.customerName}</span> for {booking.model}{booking.vehicleUnit ? ` (${booking.vehicleUnit.vin})` : ''} — booking {booking.bookingNumber}</p>
-        ) : serviceTicket ? (
+        {serviceTicket ? (
           <div>
             <p className="text-sm text-ink/70">Billing <span className="font-medium text-ink">{serviceTicket.customerName}</span> for {serviceTicket.chassisNumber} — ticket {serviceTicket.ticketNumber}</p>
             {serviceTicket.partsUsed.length > 0 && (

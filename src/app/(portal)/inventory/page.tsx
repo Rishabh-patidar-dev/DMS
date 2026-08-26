@@ -228,7 +228,7 @@ let lineKeySeq = 0
 function newLineKey() { return ++lineKeySeq }
 function blankVehicleLine(selected = ''): VehicleLine { return { vin: '', selected, color: '', batteryHealthPct: '' } }
 
-async function saveVehicleLines(lines: { key: number; line: VehicleLine }[]): Promise<string[]> {
+async function saveVehicleLines(lines: { key: number; line: VehicleLine }[], source: 'MANUAL_ADD' | 'SCAN_BILL'): Promise<string[]> {
   const failures: string[] = []
   for (const { line } of lines) {
     const vin = line.vin.trim()
@@ -236,7 +236,7 @@ async function saveVehicleLines(lines: { key: number; line: VehicleLine }[]): Pr
     if (!vin || !model || !segment) continue
     const { ok, data } = await crmFetch('/api/v1/dealer-portal/vehicle-units', {
       method: 'POST',
-      body: JSON.stringify({ vin, model, segment, color: line.color.trim() || undefined, batteryHealthPct: line.batteryHealthPct || undefined }),
+      body: JSON.stringify({ vin, model, segment, color: line.color.trim() || undefined, batteryHealthPct: line.batteryHealthPct || undefined, source }),
     })
     if (!ok) failures.push(`${vin || model}: ${data.message ?? 'failed'}`)
   }
@@ -313,7 +313,7 @@ function AddVehiclesManualForm({ onDone }: { onDone: () => void }) {
     if (validLines.length === 0) return
     setSaving(true)
     setError(null)
-    const failures = await saveVehicleLines(validLines)
+    const failures = await saveVehicleLines(validLines, 'MANUAL_ADD')
     setSaving(false)
     if (failures.length > 0) { setError(failures.join('; ')); return }
     onDone()
@@ -401,7 +401,7 @@ function ScanVehicleBillForm({ onDone }: { onDone: () => void }) {
     if (validLines.length === 0) return
     setSaving(true)
     setSaveError(null)
-    const failures = await saveVehicleLines(validLines)
+    const failures = await saveVehicleLines(validLines, 'SCAN_BILL')
     setSaving(false)
     if (failures.length > 0) { setSaveError(failures.join('; ')); return }
     onDone()
