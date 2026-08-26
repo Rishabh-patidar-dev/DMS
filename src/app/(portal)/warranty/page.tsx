@@ -1,15 +1,17 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Search, CheckCircle2, XCircle, Paperclip, RefreshCw, ClipboardList, Clock, Wallet } from 'lucide-react'
+import { Loader2, Plus, Search, CheckCircle2, XCircle, RefreshCw, ClipboardList, Clock, Wallet, ChevronDown, ChevronUp } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
 import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
 import { FormShell, FieldLabel } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
+import { WARRANTY_LAST_SEEN_KEY } from '@/lib/warrantySeen'
 
 type Claim = {
   id: number
@@ -20,7 +22,26 @@ type Claim = {
   submittedAt: string
   componentUnit: { serialNumber: string; componentType: string } | null
   vehicleUnit: { vin: string; model: string } | null
+  supplierRecovery: { status: string } | null
 }
+
+type ClaimEvent = {
+  id: number
+  fromStatus: string | null
+  toStatus: string
+  note: string | null
+  createdAt: string
+}
+
+type ClaimDetail = Claim & {
+  approvedAmount: string | number | null
+  rejectionReason: string | null
+  adjudicationNotes: string | null
+  voidReason: string | null
+  events: ClaimEvent[]
+}
+
+const CHARGER_TYPES = ['AC Type 2', 'DC CCS2', 'DC CHAdeMO', 'Manufacturer OEM charger', 'Other']
 
 const UNDER_REVIEW_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'INFO_REQUESTED']
 const APPROVED_STATUSES = ['APPROVED', 'IN_REPAIR']
@@ -49,6 +70,18 @@ export default function WarrantyPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Clears the sidebar's unread-warranty badge — PortalShell re-checks the
+  // count on every route change, so the next time it does, every status
+  // change staff made up to this moment no longer counts as unread.
+  useEffect(() => {
+    try {
+      localStorage.setItem(WARRANTY_LAST_SEEN_KEY, new Date().toISOString())
+    } catch {
+      // localStorage unavailable (private mode etc.) — the badge just
+      // won't clear locally, not worth surfacing an error for.
+    }
+  }, [])
 
   const underReviewCount = useMemo(() => claims.filter((c) => UNDER_REVIEW_STATUSES.includes(c.status)).length, [claims])
   const approvedCount = useMemo(() => claims.filter((c) => APPROVED_STATUSES.includes(c.status)).length, [claims])
@@ -130,17 +163,22 @@ export default function WarrantyPage() {
                   <td className="px-4 py-3 text-ink/70">{c.vehicleUnit ? `${c.vehicleUnit.model} · ${c.vehicleUnit.vin}` : '—'}</td>
                   <td className="px-4 py-3 text-ink/70">{c.componentUnit?.componentType ?? '—'}</td>
                   <td className="px-4 py-3 text-ink">{c.customerName}</td>
-                  <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={c.status} />
+                      {c.supplierRecovery && <span className="text-[10px] font-medium uppercase text-ink/40">Recovery: {c.supplierRecovery.status}</span>}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <button onClick={() => setExpandedId(expandedId === c.id ? null : c.id)} className="flex items-center gap-1 text-xs text-ink/40 hover:text-slate">
-                      <Paperclip className="h-3.5 w-3.5" />
+                      {expandedId === c.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} Details
                     </button>
                   </td>
                 </tr>
                 {expandedId === c.id && (
                   <tr className="border-b border-ink/[0.05] last:border-0">
-                    <td colSpan={6} className="bg-brand-white px-4 py-3">
-                      <AttachmentUpload kind="WARRANTY_CLAIM" parentId={c.id} />
+                    <td colSpan={6} className="bg-brand-white px-4 py-4">
+                      <ClaimDetailPanel claimId={c.id} />
                     </td>
                   </tr>
                 )}
@@ -149,6 +187,71 @@ export default function WarrantyPage() {
           </tbody>
         </table>
       </Card>
+    </div>
+  )
+}
+
+const EVENT_LABEL = (s: string | null) => s ? s.replace(/_/g, ' ') : 'Submitted'
+
+function ClaimDetailPanel({ claimId }: { claimId: number }) {
+  const [detail, setDetail] = useState<ClaimDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(null)
+    crmFetch(`/api/v1/dealer-portal/warranty-claims/${claimId}`).then(({ ok, data }) => {
+      if (!active) return
+      if (!ok) { setError(data.message ?? 'Could not load claim detail'); setLoading(false); return }
+      setDetail(data)
+      setLoading(false)
+    })
+    return () => { active = false }
+  }, [claimId])
+
+  if (loading) return <div className="flex justify-center py-6 text-ink/40"><Loader2 className="h-4 w-4 animate-spin" /></div>
+  if (error || !detail) return <p className="text-xs text-red-500">{error ?? 'Could not load claim detail'}</p>
+
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">Claim details</p>
+        <dl className="space-y-1.5 text-sm">
+          {detail.approvedAmount != null && (
+            <div className="flex justify-between"><dt className="text-ink/50">Approved amount</dt><dd className="font-medium text-ink">₹{Number(detail.approvedAmount).toLocaleString('en-IN')}</dd></div>
+          )}
+          {detail.rejectionReason && (
+            <div><dt className="text-ink/50">Rejection reason</dt><dd className="mt-0.5 rounded-lg bg-red-50 px-3 py-2 text-red-700">{detail.rejectionReason}</dd></div>
+          )}
+          {detail.adjudicationNotes && (
+            <div><dt className="text-ink/50">Adjudication notes</dt><dd className="mt-0.5 text-ink/70">{detail.adjudicationNotes}</dd></div>
+          )}
+          {detail.supplierRecovery && (
+            <div className="flex justify-between"><dt className="text-ink/50">Supplier recovery</dt><dd className="font-medium text-ink">{detail.supplierRecovery.status}</dd></div>
+          )}
+        </dl>
+
+        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-ink/40">Attachments</p>
+        <AttachmentUpload kind="WARRANTY_CLAIM" parentId={claimId} />
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">Timeline</p>
+        <ol className="space-y-3">
+          {detail.events.map((e) => (
+            <li key={e.id} className="flex gap-3 text-sm">
+              <div className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+              <div>
+                <p className="text-ink">{EVENT_LABEL(e.fromStatus)} → <span className="font-medium">{EVENT_LABEL(e.toStatus)}</span></p>
+                {e.note && <p className="mt-0.5 text-xs text-ink/60">{e.note}</p>}
+                <p className="mt-0.5 text-[11px] text-ink/40">{new Date(e.createdAt).toLocaleString()}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   )
 }
@@ -162,6 +265,10 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
   const [customerName, setCustomerName] = useState('')
   const [issueDescription, setIssueDescription] = useState('')
   const [odometerReading, setOdometerReading] = useState('')
+  const [measuredSohPct, setMeasuredSohPct] = useState('')
+  const [chargerType, setChargerType] = useState('')
+  const [serviceRecordsComplete, setServiceRecordsComplete] = useState(true)
+  const [claimAmount, setClaimAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<any | null>(null)
@@ -187,6 +294,10 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
         customerName,
         issueDescription,
         odometerReading: odometerReading ? Number(odometerReading) : undefined,
+        measuredSohPct: measuredSohPct ? Number(measuredSohPct) : undefined,
+        chargerType: chargerType || undefined,
+        serviceRecordsComplete,
+        claimAmount: claimAmount ? Number(claimAmount) : undefined,
       }),
     })
     setSaving(false)
@@ -216,6 +327,7 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
         { label: 'Component', value: selectedComponent?.componentType },
         { label: 'Customer', value: customerName },
         { label: 'Odometer', value: odometerReading ? `${odometerReading} km` : undefined },
+        { label: 'Claim amount', value: claimAmount ? `₹${Number(claimAmount).toLocaleString('en-IN')}` : undefined },
       ]}
       tip="Coverage is checked automatically and the claim is auto-adjudicated the instant you submit — there's no separate manual review step here."
       onSubmit={submit}
@@ -264,6 +376,22 @@ function NewClaimForm({ onDone }: { onDone: () => void }) {
           placeholder="What's the reported issue?"
           className="w-full rounded-xl border-2 border-transparent bg-sand/[0.07] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:border-accent focus:bg-white focus:outline-none"
         />
+      </div>
+
+      {/* Same adjudication evidence fields the manufacturer's own claim-intake
+          form asks for — a battery claim raised without these can never
+          auto-approve or auto-void, it always lands in manual review
+          regardless of how clean-cut it actually is. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Input label="Measured SoH % (battery claims)" type="number" min={0} max={100} value={measuredSohPct} onChange={(e) => setMeasuredSohPct(e.target.value)} />
+        <Select label="Charger type (charger claims)" placeholder="Not applicable" options={CHARGER_TYPES.map((c) => ({ value: c, label: c }))} value={chargerType} onChange={(e) => setChargerType(e.target.value)} />
+        <Input label="Claim amount, ₹ (optional)" type="number" value={claimAmount} onChange={(e) => setClaimAmount(e.target.value)} />
+        <div className="flex items-end pb-2.5">
+          <label className="flex items-center gap-2 text-sm text-ink/70">
+            <input type="checkbox" checked={serviceRecordsComplete} onChange={(e) => setServiceRecordsComplete(e.target.checked)} className="h-4 w-4 rounded border-ink/20" />
+            Service records complete
+          </label>
+        </div>
       </div>
     </FormShell>
   )

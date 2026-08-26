@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Paperclip, Upload, X, FileText, RefreshCw } from 'lucide-react'
 import { crmFetch, CRM_API_URL } from '@/lib/crm/dealerAuth'
 
-type AttachmentKind = 'CUSTOMER_BILL' | 'SERVICE_TICKET' | 'BOOKING' | 'WARRANTY_CLAIM'
+type AttachmentKind = 'CUSTOMER_BILL' | 'SERVICE_TICKET' | 'BOOKING' | 'WARRANTY_CLAIM' | 'FINANCE_CASE' | 'SPARE_PART_RETURN'
 
 type Attachment = {
   id: number
@@ -20,6 +20,8 @@ const KIND_ROUTE: Record<AttachmentKind, string> = {
   SERVICE_TICKET: 'service-tickets',
   BOOKING: 'bookings',
   WARRANTY_CLAIM: 'warranty-claims',
+  FINANCE_CASE: 'finance-cases',
+  SPARE_PART_RETURN: 'spare-part-returns',
 }
 
 function resolveUrl(fileUrl: string) {
