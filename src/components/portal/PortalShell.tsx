@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut, Loader2, LayoutGrid, Car, ClipboardList, ShieldCheck, Wrench, Users, WifiOff,
-  FileText, ChevronDown, Menu, X, Receipt, PackagePlus, Landmark,
+  FileText, ChevronDown, Menu, X, Receipt, PackagePlus,
   Bell,
 } from 'lucide-react'
 import { crmFetch, clearStoredToken } from '@/lib/crm/dealerAuth'
@@ -87,7 +87,6 @@ const NAV: NavEntry[] = [
       { href: '/billing', label: 'Customer Billing', icon: Receipt },
     ],
   },
-  { kind: 'link', href: '/finance', label: 'Finance Management', icon: Landmark, asModule: true },
   {
     kind: 'group',
     id: 'service',
