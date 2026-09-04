@@ -1,16 +1,14 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search, ScanLine, PenLine, Upload, X, FlagTriangleRight, ChevronDown, ChevronUp, Undo2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, Plus, IndianRupee, AlertTriangle, Boxes, RefreshCw, Search, ScanLine, PenLine, Upload, X } from 'lucide-react'
 import { crmFetch } from '@/lib/crm/dealerAuth'
-import { PageHeader, StatTile, StatusBadge } from '@/components/portal/StatTile'
+import { PageHeader, StatTile } from '@/components/portal/StatTile'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { AttachmentUpload } from '@/components/portal/AttachmentUpload'
-import { FormShell, FieldLabel } from '@/components/portal/FormShell'
+import { FormShell } from '@/components/portal/FormShell'
 import { useDeepLinkQuery } from '@/lib/useDeepLinkQuery'
-import { RETURNS_LAST_SEEN_KEY } from '@/lib/returnsSeen'
 
 type SparePart = {
   id: number
@@ -19,18 +17,6 @@ type SparePart = {
   quantityOnHand: number
   unitPrice: string
   updatedAt: string
-}
-
-type SparePartReturn = {
-  id: number
-  partName: string
-  partCode: string | null
-  quantity: number
-  reason: string
-  status: string
-  resolution: string | null
-  staffNotes: string | null
-  createdAt: string
 }
 
 const LOW_STOCK_THRESHOLD = 5
@@ -43,10 +29,6 @@ export default function SparePartsInventoryPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState<'none' | 'manual' | 'scan'>('none')
   const [search, setSearch] = useState(deepLinkQ)
-  const [returns, setReturns] = useState<SparePartReturn[]>([])
-  const [returnsLoading, setReturnsLoading] = useState(true)
-  const [expandedReturnId, setExpandedReturnId] = useState<number | null>(null)
-  const [reportingPartId, setReportingPartId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -62,27 +44,7 @@ export default function SparePartsInventoryPage() {
     setLoading(false)
   }, [])
 
-  const loadReturns = useCallback(async () => {
-    setReturnsLoading(true)
-    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-part-returns')
-    if (ok) setReturns(data.returns ?? [])
-    setReturnsLoading(false)
-  }, [])
-
   useEffect(() => { load() }, [load])
-  useEffect(() => { loadReturns() }, [loadReturns])
-
-  // Clears the sidebar's unread-returns badge — PortalShell re-checks the
-  // count on every route change, so every decision staff made up to this
-  // moment no longer counts as unread.
-  useEffect(() => {
-    try {
-      localStorage.setItem(RETURNS_LAST_SEEN_KEY, new Date().toISOString())
-    } catch {
-      // localStorage unavailable (private mode etc.) — the badge just
-      // won't clear locally, not worth surfacing an error for.
-    }
-  }, [])
 
   const totalUnits = parts.reduce((sum, p) => sum + p.quantityOnHand, 0)
   const totalValue = parts.reduce((sum, p) => sum + p.quantityOnHand * Number(p.unitPrice), 0)
@@ -159,78 +121,16 @@ export default function SparePartsInventoryPage() {
                 key={p.id}
                 part={p}
                 onChanged={load}
-                reporting={reportingPartId === p.id}
-                onToggleReport={() => setReportingPartId((v) => v === p.id ? null : p.id)}
-                onReported={() => { setReportingPartId(null); loadReturns() }}
               />
             ))}
           </tbody>
         </table>
       </Card>
-
-      <div className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold text-ink">Quality Returns</h2>
-        <p className="mb-4 text-xs text-ink/45">Parts you've flagged as failing quality — the manufacturer reviews each one and resolves it (replaced or credited) from Inventory Management.</p>
-        <Card padding="compact" className="overflow-hidden !p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-ink/[0.07] text-left text-ink/50">
-                <th className="px-4 py-3 font-medium">Part</th>
-                <th className="px-4 py-3 font-medium">Qty</th>
-                <th className="px-4 py-3 font-medium">Reason</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {returnsLoading ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-ink/40"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></td></tr>
-              ) : returns.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-ink/40">No quality issues reported yet.</td></tr>
-              ) : returns.map((r) => (
-                <Fragment key={r.id}>
-                  <tr className="border-b border-ink/[0.05] last:border-0">
-                    <td className="px-4 py-3 text-ink">{r.partName}</td>
-                    <td className="px-4 py-3 tabular-nums text-ink/70">{r.quantity}</td>
-                    <td className="px-4 py-3 text-ink/70">{r.reason}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <StatusBadge status={r.status} />
-                        {r.resolution && <span className="text-[10px] font-medium uppercase text-ink/40">{r.resolution}</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => setExpandedReturnId(expandedReturnId === r.id ? null : r.id)} className="flex items-center gap-1 text-xs text-ink/40 hover:text-slate">
-                        {expandedReturnId === r.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} Details
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedReturnId === r.id && (
-                    <tr className="border-b border-ink/[0.05] last:border-0">
-                      <td colSpan={5} className="bg-brand-white px-4 py-4">
-                        {r.staffNotes && <p className="mb-3 rounded-lg bg-mint px-3.5 py-3 text-xs text-slate">{r.staffNotes}</p>}
-                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink/40">Photos / evidence</p>
-                        <AttachmentUpload kind="SPARE_PART_RETURN" parentId={r.id} />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      </div>
     </div>
   )
 }
 
-function PartRow({ part, onChanged, reporting, onToggleReport, onReported }: {
-  part: SparePart
-  onChanged: () => void
-  reporting: boolean
-  onToggleReport: () => void
-  onReported: () => void
-}) {
+function PartRow({ part, onChanged }: { part: SparePart; onChanged: () => void }) {
   const [editing, setEditing] = useState(false)
   const [quantityOnHand, setQuantityOnHand] = useState(String(part.quantityOnHand))
   const [unitPrice, setUnitPrice] = useState(part.unitPrice)
@@ -266,10 +166,6 @@ function PartRow({ part, onChanged, reporting, onToggleReport, onReported }: {
     )
   }
 
-  if (reporting) {
-    return <ReportIssueRow part={part} onCancel={onToggleReport} onReported={onReported} />
-  }
-
   return (
     <tr className="border-b border-ink/[0.05] last:border-0">
       <td className="px-4 py-3 text-ink">{part.partName}</td>
@@ -283,58 +179,7 @@ function PartRow({ part, onChanged, reporting, onToggleReport, onReported }: {
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-3">
           <button onClick={() => setEditing(true)} className="text-xs font-medium text-slate hover:underline">Edit</button>
-          {part.quantityOnHand > 0 && (
-            <button onClick={onToggleReport} className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:underline">
-              <FlagTriangleRight className="h-3.5 w-3.5" /> Report issue
-            </button>
-          )}
         </div>
-      </td>
-    </tr>
-  )
-}
-
-function ReportIssueRow({ part, onCancel, onReported }: { part: SparePart; onCancel: () => void; onReported: () => void }) {
-  const [quantity, setQuantity] = useState('1')
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const submit = async () => {
-    setSaving(true)
-    setError(null)
-    const { ok, data } = await crmFetch('/api/v1/dealer-portal/spare-part-returns', {
-      method: 'POST',
-      body: JSON.stringify({ dealerSparePartId: part.id, quantity, reason }),
-    })
-    setSaving(false)
-    if (!ok) { setError(data.message ?? 'Could not report the issue'); return }
-    onReported()
-  }
-
-  const valid = Number(quantity) > 0 && Number(quantity) <= part.quantityOnHand && reason.trim()
-
-  return (
-    <tr className="border-b border-ink/[0.05] last:border-0 bg-amber-50/40">
-      <td colSpan={6} className="px-4 py-3">
-        <p className="mb-2 text-xs font-semibold text-ink">Report a quality issue — {part.partName}</p>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[100px_1fr_auto]">
-          <Input label="Quantity" type="number" min={1} max={part.quantityOnHand} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-          <div>
-            <FieldLabel>Reason</FieldLabel>
-            <input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="What's wrong with the part?"
-              className="w-full rounded-xl border-2 border-transparent bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:border-accent focus:outline-none"
-            />
-          </div>
-          <div className="flex items-end gap-1.5">
-            <Button size="sm" disabled={!valid || saving} loading={saving} onClick={submit}>Submit</Button>
-            <Button size="sm" variant="ghost" onClick={onCancel}><Undo2 className="h-3.5 w-3.5" /></Button>
-          </div>
-        </div>
-        {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
       </td>
     </tr>
   )

@@ -13,8 +13,6 @@ import { GlobalSearch } from './GlobalSearch'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { INVOICE_LAST_SEEN_KEY } from '@/lib/invoicesSeen'
 import { WARRANTY_LAST_SEEN_KEY } from '@/lib/warrantySeen'
-import { FINANCE_LAST_SEEN_KEY } from '@/lib/financeSeen'
-import { RETURNS_LAST_SEEN_KEY } from '@/lib/returnsSeen'
 
 type ChartSeries = { label: string; value: number }[]
 
@@ -110,8 +108,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [invoiceUnreadCount, setInvoiceUnreadCount] = useState(0)
   const [warrantyUnreadCount, setWarrantyUnreadCount] = useState(0)
-  const [financeUnreadCount, setFinanceUnreadCount] = useState(0)
-  const [returnsUnreadCount, setReturnsUnreadCount] = useState(0)
 
   const toggleGroup = (id: string) => {
     setOpenGroups((prev) => {
@@ -156,48 +152,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     crmFetch(`/api/v1/dealer-portal/warranty-claims/new-count${since ? `?since=${encodeURIComponent(since)}` : ''}`)
       .then(({ ok, data }) => {
         if (active && ok) setWarrantyUnreadCount(data.count ?? 0)
-      })
-      .catch(() => {
-        // non-critical UI indicator — a failed check just leaves it as-is
-      })
-    return () => { active = false }
-  }, [pathname])
-
-  // Same "unread" pattern, for Finance Management — clears whenever the
-  // Finance page is opened, so a case staff just moved through the pipeline
-  // shows up as unread until the dealer actually looks at it.
-  useEffect(() => {
-    let active = true
-    let since = ''
-    try {
-      since = localStorage.getItem(FINANCE_LAST_SEEN_KEY) ?? ''
-    } catch {
-      // private-mode/unavailable storage — treat as never seen
-    }
-    crmFetch(`/api/v1/dealer-portal/finance-cases/new-count${since ? `?since=${encodeURIComponent(since)}` : ''}`)
-      .then(({ ok, data }) => {
-        if (active && ok) setFinanceUnreadCount(data.count ?? 0)
-      })
-      .catch(() => {
-        // non-critical UI indicator — a failed check just leaves it as-is
-      })
-    return () => { active = false }
-  }, [pathname])
-
-  // Same "unread" pattern, for Spare Parts quality returns — clears
-  // whenever the Spare Parts page is opened, so a return staff just
-  // approved/rejected/resolved shows up as unread until the dealer looks.
-  useEffect(() => {
-    let active = true
-    let since = ''
-    try {
-      since = localStorage.getItem(RETURNS_LAST_SEEN_KEY) ?? ''
-    } catch {
-      // private-mode/unavailable storage — treat as never seen
-    }
-    crmFetch(`/api/v1/dealer-portal/spare-part-returns/new-count${since ? `?since=${encodeURIComponent(since)}` : ''}`)
-      .then(({ ok, data }) => {
-        if (active && ok) setReturnsUnreadCount(data.count ?? 0)
       })
       .catch(() => {
         // non-critical UI indicator — a failed check just leaves it as-is
@@ -279,7 +233,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
               {...entry}
               active={pathname === entry.href}
               onClick={onNavigate}
-              badgeCount={entry.href === '/invoices' ? invoiceUnreadCount : entry.href === '/warranty' ? warrantyUnreadCount : entry.href === '/finance' ? financeUnreadCount : undefined}
+              badgeCount={entry.href === '/invoices' ? invoiceUnreadCount : entry.href === '/warranty' ? warrantyUnreadCount : undefined}
             />
           </div>
         ) : (
@@ -299,7 +253,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                     {...item}
                     active={pathname === item.href || (!item.exactOnly && !!pathname?.startsWith(item.href + '/'))}
                     onClick={onNavigate}
-                    badgeCount={item.href === '/inventory/spare-parts' ? returnsUnreadCount : undefined}
+                    badgeCount={undefined}
                   />
                 ))}
               </div>

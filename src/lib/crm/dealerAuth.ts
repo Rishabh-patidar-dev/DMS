@@ -45,12 +45,44 @@ export function clearStoredToken(): void {
   }
 }
 
+// A request that never settles leaves its panel spinning for the rest of the
+// session with no error and no way for the dealer to tell it apart from slow
+// data. fetch() has no built-in timeout, so this supplies one.
+const REQUEST_TIMEOUT_MS = 30_000
+
+// Uploads and OCR previews legitimately take much longer than a JSON call —
+// timing those out at 30s would break a feature that is merely slow.
+const UPLOAD_TIMEOUT_MS = 120_000
+
+let redirectingToLogin = false
+
+/**
+ * Sends the dealer to the login screen after their session lapses.
+ *
+ * The dealer_session JWT lasts 30 days, so this is uncommon — but when it does
+ * happen, every panel on the page fails at once with no explanation. Clearing
+ * the dead token and bouncing to /login is the only recoverable outcome.
+ */
+function handleExpiredSession() {
+  if (typeof window === 'undefined' || redirectingToLogin) return
+  if (window.location.pathname.startsWith('/login')) return
+  redirectingToLogin = true
+  clearStoredToken()
+  const next = encodeURIComponent(window.location.pathname + window.location.search)
+  window.location.href = `/login?next=${next}`
+}
+
 export async function crmFetch(path: string, init?: RequestInit) {
+  const isUpload = init?.body instanceof FormData
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), isUpload ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS)
+
   try {
     const token = getStoredToken()
     const res = await fetch(`${CRM_API_URL}${path}`, {
       ...init,
       credentials: 'include',
+      signal: init?.signal ?? controller.signal,
       headers: {
         ...(init?.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -58,13 +90,27 @@ export async function crmFetch(path: string, init?: RequestInit) {
       },
     })
     const data = await res.json().catch(() => ({}))
+
+    if (res.status === 401) handleExpiredSession()
+
     return { ok: res.ok, status: res.status, data }
-  } catch {
-    // fetch() throws (not a rejected-with-response) on network failure or a
-    // CORS-blocked response — the browser gives no detail either way. Surface
-    // it as a clean failed result instead of an unhandled rejection, so
-    // callers can show a real error instead of hanging on a loading spinner
-    // forever.
-    return { ok: false, status: 0, data: { message: "Can't reach the server. Check your connection and try again." } }
+  } catch (err) {
+    // fetch() throws (not a rejected-with-response) on network failure, a
+    // CORS-blocked response, or an abort — the browser gives no detail either
+    // way. Surface it as a clean failed result instead of an unhandled
+    // rejection, so callers can show a real error instead of hanging on a
+    // loading spinner forever.
+    const timedOut = err instanceof DOMException && err.name === 'AbortError'
+    return {
+      ok: false,
+      status: 0,
+      data: {
+        message: timedOut
+          ? 'That took too long and was cancelled. Please try again.'
+          : "Can't reach the server. Check your connection and try again.",
+      },
+    }
+  } finally {
+    clearTimeout(timeout)
   }
 }
